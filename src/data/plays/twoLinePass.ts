@@ -17,22 +17,23 @@ function createTwoLinePassPlay(
   const tripsPrefix = isTrips ? `TRIPS ${dir} ` : '';
   const code = `${numStr}2 LINE ${tripsPrefix}${r1} ${r2} ${r3} ${r4}${specialTag ? ' ' + specialTag : ''}`.trim();
 
-  // Positions in 2 Line:
-  // If Trips Right:
-  // Right side 3-stack: WR-Front at 72 y=65, SR-Back at 72 y=68, Slot-Inside at 62 y=66
-  // Left side single: X at 18 y=65
-  // QB at 50 y=75, C at 50 y=65, RB at 42 y=75
-  const stackFrontX = isRight ? 72 : 28;
-  const stackBackX = isRight ? 72 : 28;
-  const insideSlotX = isRight ? 60 : 40;
+  // 8v8 2-Line Alignment with 3 O-Line (LG, C, RG) and 4 Receivers:
+  // Line of Scrimmage: LG at 44, C at 50, RG at 56
+  // QB at 50
+  // Stack Side (isRight ? Right : Left):
+  // Stack Front: x=(isRight ? 76 : 24), y=65 (runs r1)
+  // Stack Back:  x=(isRight ? 76 : 24), y=68 (runs r2)
+  // Inside Slot: x=(isRight ? 62 : 38), y=66 (runs r3)
+  // Backside Solo: x=(isRight ? 18 : 82), y=65 (runs r4)
+  const stackFrontX = isRight ? 76 : 24;
+  const stackBackX = isRight ? 76 : 24;
+  const insideSlotX = isRight ? 62 : 38;
   const backsideX = isRight ? 18 : 82;
-  const rbX = isRight ? 42 : 58;
 
   const wrFrontGen = generateRoutePoints(stackFrontX, 65, r1, { isRightSide: isRight });
   const wrBackGen = generateRoutePoints(stackBackX, 68, r2, { isRightSide: isRight });
   const insideGen = generateRoutePoints(insideSlotX, 66, r3, { isRightSide: isRight });
   const backsideGen = generateRoutePoints(backsideX, 65, r4, { isRightSide: !isRight });
-  const rbGen = generateRoutePoints(rbX, 75, 1, { isRightSide: !isRight });
 
   return {
     id: `two-line-pass-${String(playNumber).replace(/[^a-z0-9]/g, '-')}-${dir.toLowerCase()}`,
@@ -43,20 +44,20 @@ function createTwoLinePassPlay(
     category: '2 LINE PASS',
     playType: 'PASS',
     direction: dir,
-    formationName: isTrips ? `2-Line Trips ${sideLabel} (Stack)` : '2-Line Balanced Stack',
-    conceptName: `2-Line Stack Combination (${r1}-${r2}-${r3}-${r4})`,
-    tags: ['2 Line', 'Stack Pass', isRight ? 'Right Side' : 'Left Side', 'Natural Rub/Pick'],
-    description: `7v7 2-Line stack pass play. The tandem alignment creates instant rub/mesh traffic against man coverage and stretches zone levels.`,
+    formationName: isTrips ? `2-Line Trips ${sideLabel} (8v8 3-OL Stack)` : '2-Line Balanced Stack (8v8 3-OL)',
+    conceptName: `8v8 2-Line Stack Combination (${r1}-${r2}-${r3}-${r4})`,
+    tags: ['2 Line', 'Stack Pass', isRight ? 'Right Side' : 'Left Side', 'Natural Rub/Pick', '3 O-Line', '8v8'],
+    description: `8v8 2-Line stack pass play (Finland University League) protected by a 3-man offensive line (LG, C, RG). The tandem stack alignment creates natural rub routes against man coverage and levels zone defenders.`,
     coachingPoints: [
-      `Stack Release: Front receiver releases outside, back receiver releases inside to cross defenders.`,
-      `Natural Rubs: Capitalize on defender collision/traffic at 5 yards.`,
-      `Progression: Primary read to the stack combo (${r1} / ${r2}), backside isolate (${r4}) on single-high alert.`,
+      `Stack Release: Front receiver releases outside (${r1}), back receiver rubs inside (${r2}) to defeat man press.`,
+      `Inside Slot (${r3}): Stretches the middle hole between linebackers and safeties.`,
+      `Backside Solo (${r4}): 1-on-1 boundary isolate alert when safeties rotate toward the stack.`,
     ],
     progressionReads: [
-      { order: 1, playerId: 'WR_FRONT', concept: `Stack Front Route (${r1})`, cue: 'Check release leverage and corner hip turn' },
-      { order: 2, playerId: 'WR_BACK', concept: `Stack Back Route (${r2})`, cue: 'Target rub window behind front receiver' },
-      { order: 3, playerId: 'SLOT', concept: `Inside Seam (${r3})`, cue: 'Read middle linebacker/safety' },
-      { order: 4, playerId: 'BACKSIDE', concept: `Backside 1-on-1 (${r4})`, cue: 'Single-coverage alert' },
+      { order: 1, playerId: 'Z', concept: `Stack Front Route (${r1})`, cue: 'Check release leverage and corner hip turn' },
+      { order: 2, playerId: 'Y', concept: `Stack Back Route (${r2})`, cue: 'Target rub window behind front receiver' },
+      { order: 3, playerId: 'H', concept: `Inside Seam (${r3})`, cue: 'Read middle linebacker/safety' },
+      { order: 4, playerId: 'X', concept: `Backside 1-on-1 (${r4})`, cue: 'Single-coverage boundary alert' },
     ],
     qbDrop: 'Shotgun 3-Step',
     players: {
@@ -77,7 +78,7 @@ function createTwoLinePassPlay(
       C: {
         id: 'C',
         label: 'C',
-        positionName: 'Center',
+        positionName: 'Center (3 O-Line)',
         initialPos: { x: 50, y: 65 },
         roleDescription: 'Snap ball and execute pass protection',
         route: {
@@ -89,8 +90,38 @@ function createTwoLinePassPlay(
           isBlocking: true,
         },
       },
-      WR_FRONT: {
-        id: 'WR_FRONT',
+      LG: {
+        id: 'LG',
+        label: 'LG',
+        positionName: 'Left Guard (3 O-Line)',
+        initialPos: { x: 44, y: 65 },
+        roleDescription: 'Pass protection against left interior/edge rush',
+        route: {
+          name: 'Pass Protection',
+          points: [
+            { x: 44, y: 65, type: 'snap' },
+            { x: 44, y: 64, type: 'block', label: 'PRO' },
+          ],
+          isBlocking: true,
+        },
+      },
+      RG: {
+        id: 'RG',
+        label: 'RG',
+        positionName: 'Right Guard (3 O-Line)',
+        initialPos: { x: 56, y: 65 },
+        roleDescription: 'Pass protection against right interior/edge rush',
+        route: {
+          name: 'Pass Protection',
+          points: [
+            { x: 56, y: 65, type: 'snap' },
+            { x: 56, y: 64, type: 'block', label: 'PRO' },
+          ],
+          isBlocking: true,
+        },
+      },
+      Z: {
+        id: 'Z',
         label: isRight ? 'Z (Stack-Front)' : 'X (Stack-Front)',
         positionName: 'Stack Front Receiver',
         initialPos: { x: stackFrontX, y: 65 },
@@ -103,9 +134,9 @@ function createTwoLinePassPlay(
           color: '#38bdf8',
         },
       },
-      WR_BACK: {
-        id: 'WR_BACK',
-        label: isRight ? 'SR (Stack-Back)' : 'SR (Stack-Back)',
+      Y: {
+        id: 'Y',
+        label: isRight ? 'Y (Stack-Back)' : 'H (Stack-Back)',
         positionName: 'Stack Back Receiver',
         initialPos: { x: stackBackX, y: 68 },
         roleDescription: `Runs route ${r2}`,
@@ -117,8 +148,8 @@ function createTwoLinePassPlay(
           color: '#10b981',
         },
       },
-      SLOT: {
-        id: 'SLOT',
+      H: {
+        id: 'H',
         label: isRight ? 'H (Inside Slot)' : 'Y (Inside Slot)',
         positionName: 'Inside Slot Receiver',
         initialPos: { x: insideSlotX, y: 66 },
@@ -130,9 +161,9 @@ function createTwoLinePassPlay(
           color: '#f59e0b',
         },
       },
-      BACKSIDE: {
-        id: 'BACKSIDE',
-        label: isRight ? 'X (Backside WR)' : 'Z (Backside WR)',
+      X: {
+        id: 'X',
+        label: isRight ? 'X (Backside Solo)' : 'Z (Backside Solo)',
         positionName: 'Backside Single Receiver',
         initialPos: { x: backsideX, y: 65 },
         roleDescription: `Runs route ${r4}`,
@@ -141,19 +172,6 @@ function createTwoLinePassPlay(
           routeNumber: r4,
           points: backsideGen.points,
           color: '#ec4899',
-        },
-      },
-      RB: {
-        id: 'RB',
-        label: 'RB',
-        positionName: 'Running Back',
-        initialPos: { x: rbX, y: 75 },
-        roleDescription: 'Checkdown flat release or pass protection',
-        route: {
-          name: rbGen.name,
-          points: rbGen.points,
-          isCheckdown: true,
-          color: '#a855f7',
         },
       },
     },

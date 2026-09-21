@@ -16,13 +16,15 @@ function createTripsRunPlay(
   const numStr = typeof playNumber === 'number' ? `${playNumber}. ` : '* ';
   const code = `${numStr}TRIPS ${dir} ${playCodeSuffix}`;
 
-  // In Trips:
-  // Right: Z at 88, Y at 76, H at 66; X at 16 (backside)
-  // Center: C at 50, QB at 50, RB at 42
+  // 8v8 In Trips:
+  // 8v8 Alignment with 3 O-Line (LG, C, RG):
+  // Line of Scrimmage: LG at 44, C at 50, RG at 56
+  // QB at 50, RB at 42 (if right) or 58 (if left)
+  // Trips Side: Z at 88 (Outside), Y at 74 (Slot)
+  // Backside: X at 14
   const zX = isRight ? 88 : 12;
-  const yX = isRight ? 76 : 24;
-  const hX = isRight ? 66 : 34;
-  const xX = isRight ? 16 : 84;
+  const yX = isRight ? 74 : 26;
+  const xX = isRight ? 14 : 86;
   const rbX = isRight ? 42 : 58;
 
   let qbPoints: RoutePoint[] = [{ x: 50, y: 75, type: 'snap' }];
@@ -62,16 +64,18 @@ function createTripsRunPlay(
     category: 'TRIPS RUN',
     playType: runScheme === 'SCREEN' ? 'SCREEN' : 'RUN',
     direction: dir,
-    formationName: `Trips ${sideLabel} (3x1 Set)`,
+    formationName: `Trips ${sideLabel} (8v8 3-OL Power)`,
     conceptName: `${englishAction} (${runnerType} Ball Carrier)`,
-    tags: ['Trips', 'Run Play', `${runnerType} Run`, hasMotion ? 'Pre-Snap Motion' : 'Static'],
-    description: `7v7 Trips ${sideLabel} run play executing ${englishAction}. Overloads the perimeter with 3 blockers to seal the edge.`,
+    tags: ['Trips', 'Run Play', `${runnerType} Run`, hasMotion ? 'Pre-Snap Motion' : 'Static', '3 O-Line', '8v8'],
+    description: `8v8 Trips ${sideLabel} run play executing ${englishAction}. Paved by 3 offensive linemen (LG, C, RG) with perimeter blocking on the edge.`,
     coachingPoints: [
-      `3-Man Perimeter Stalk: Outside WR and two slot receivers execute coordinated crack-and-stalk blocks.`,
-      `Ball Carrier: ${runnerType}. Cut up behind the trips wall of blocks.`,
+      `3 O-Line Blocking: Guards and Center open the designated run lane or seal frontside gap.`,
+      `Perimeter Stalk: Receivers maintain outside leverage to spring the ball carrier.`,
+      `Ball Carrier: ${runnerType}. Cut up behind the wall of blocks.`,
     ],
     progressionReads: [
-      { order: 1, playerId: runnerType === 'QB' ? 'QB' : 'Z', concept: `Trips Edge Run (${runScheme})`, cue: 'Read block on defensive end/corner' },
+      { order: 1, playerId: runnerType === 'QB' ? 'QB' : (runnerType === 'WR' ? (isRight ? 'X' : 'Z') : 'RB'), concept: `Trips Edge Run (${runScheme})`, cue: 'Read block on defensive end/corner' },
+      { order: 2, playerId: 'C', concept: '3 O-Line Interior Seal', cue: 'Watch interior linebacker scrape' },
     ],
     qbDrop: 'QB Keep',
     players: {
@@ -92,7 +96,7 @@ function createTripsRunPlay(
       C: {
         id: 'C',
         label: 'C',
-        positionName: 'Center',
+        positionName: 'Center (3 O-Line)',
         initialPos: { x: 50, y: 65 },
         roleDescription: 'Snap ball and execute run seal',
         route: {
@@ -102,9 +106,35 @@ function createTripsRunPlay(
           color: '#f59e0b',
         },
       },
+      LG: {
+        id: 'LG',
+        label: 'LG',
+        positionName: 'Left Guard (3 O-Line)',
+        initialPos: { x: 44, y: 65 },
+        roleDescription: isRight ? 'Pull across or seal back side' : 'Frontside drive block',
+        route: {
+          name: isRight ? 'Cutoff Block' : 'Drive Block',
+          points: [{ x: 44, y: 65, type: 'snap' }, { x: isRight ? 42 : 38, y: 58, type: 'block', label: isRight ? 'CUT' : 'DRIVE' }],
+          isBlocking: true,
+          color: '#f59e0b',
+        },
+      },
+      RG: {
+        id: 'RG',
+        label: 'RG',
+        positionName: 'Right Guard (3 O-Line)',
+        initialPos: { x: 56, y: 65 },
+        roleDescription: isRight ? 'Frontside reach / drive block' : 'Pull across or seal back side',
+        route: {
+          name: isRight ? 'Drive Block' : 'Cutoff Block',
+          points: [{ x: 56, y: 65, type: 'snap' }, { x: isRight ? 62 : 58, y: 58, type: 'block', label: isRight ? 'DRIVE' : 'CUT' }],
+          isBlocking: true,
+          color: '#f59e0b',
+        },
+      },
       Z: {
         id: 'Z',
-        label: isRight ? 'Z (WR1)' : 'X (WR1)',
+        label: isRight ? 'Z (WR-R)' : 'Z (WR-L)',
         positionName: 'Outside Trips Receiver',
         initialPos: { x: zX, y: 65 },
         roleDescription: (hasMotion && !motionFake && runnerType === 'WR') ? 'Motion across and take sweep' : 'Stalk block corner',
@@ -118,10 +148,10 @@ function createTripsRunPlay(
       },
       Y: {
         id: 'Y',
-        label: isRight ? 'Y (SR2)' : 'H (SR2)',
-        positionName: 'Middle Slot Receiver',
+        label: isRight ? 'Y (Slot)' : 'Y (Slot)',
+        positionName: 'Slot Receiver',
         initialPos: { x: yX, y: 66 },
-        roleDescription: 'Crack block safety',
+        roleDescription: 'Crack block safety or edge force',
         route: {
           name: 'Crack Block',
           points: [{ x: yX, y: 66, type: 'snap' }, { x: yX + (isRight ? -4 : 4), y: 56, type: 'block', label: 'BLOCK' }],
@@ -129,22 +159,9 @@ function createTripsRunPlay(
           color: '#10b981',
         },
       },
-      H: {
-        id: 'H',
-        label: isRight ? 'H (SR1)' : 'Y (SR1)',
-        positionName: 'Inside Slot Receiver',
-        initialPos: { x: hX, y: 66 },
-        roleDescription: 'Seal inside linebacker',
-        route: {
-          name: 'Seal Block',
-          points: [{ x: hX, y: 66, type: 'snap' }, { x: hX + (isRight ? -6 : 6), y: 56, type: 'block', label: 'BLOCK' }],
-          isBlocking: true,
-          color: '#f59e0b',
-        },
-      },
       X: {
         id: 'X',
-        label: isRight ? 'X (SOLO)' : 'Z (SOLO)',
+        label: isRight ? 'X (WR-L)' : 'X (WR-R)',
         positionName: 'Backside Single Receiver',
         initialPos: { x: xX, y: 65 },
         roleDescription: (hasMotion && isRight && runnerType === 'WR') ? 'Pre-snap motion sweep carrier' : 'Backside stalk block',
@@ -170,12 +187,22 @@ function createTripsRunPlay(
         label: 'RB',
         positionName: 'Running Back',
         initialPos: { x: rbX, y: 75 },
-        roleDescription: 'Lead block out on the perimeter',
+        roleDescription: runnerType === 'QB' ? 'Lead block out on the perimeter' : 'Primary ball carrier on designated run path',
         route: {
-          name: 'Lead Block',
-          points: [{ x: rbX, y: 75, type: 'snap' }, { x: isRight ? 70 : 30, y: 68, type: 'stem' }, { x: isRight ? 84 : 16, y: 52, type: 'block', label: 'LEAD' }],
-          isBlocking: true,
-          color: '#a855f7',
+          name: runnerType === 'QB' ? 'Lead Block' : 'Run Lane',
+          points: runnerType === 'QB' ? [
+            { x: rbX, y: 75, type: 'snap' },
+            { x: isRight ? 70 : 30, y: 68, type: 'stem' },
+            { x: isRight ? 84 : 16, y: 52, type: 'block', label: 'LEAD' },
+          ] : [
+            { x: rbX, y: 75, type: 'snap' },
+            { x: 50, y: 73, type: 'stem' },
+            { x: runScheme.includes('LEFT') ? 35 : 65, y: 65, type: 'stem' },
+            { x: runScheme.includes('LEFT') ? 25 : 75, y: 42, type: 'target', label: 'RUN' },
+          ],
+          isBallCarrier: runnerType !== 'QB' && runnerType !== 'WR',
+          isBlocking: runnerType === 'QB',
+          color: (runnerType !== 'QB' && runnerType !== 'WR') ? '#ef4444' : '#f59e0b',
         },
       },
     },

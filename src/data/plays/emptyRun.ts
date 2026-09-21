@@ -16,15 +16,15 @@ function createEmptyRunPlay(
   const sideLabel = isRight ? 'Right' : 'Left';
   const code = `${playNumber}. EMPTY ${dir} ${playCodeSuffix}`;
 
-  // In Empty, 5 WRs spread out:
-  // Left: X at 14, H at 32
-  // Center: C at 50, QB at 50 (Shotgun)
-  // Right: Y at 68, SR at 78, Z at 88 (or mirrored for Left)
+  // 8v8 In Empty with 3 O-Line (LG, C, RG) and 4 Receivers (X, H, Y, Z):
+  // Line of Scrimmage: LG at 44, C at 50, RG at 56
+  // Backfield: QB alone at 50
+  // Left Receivers: X at 14 (WR), H at 30 (Slot)
+  // Right Receivers: Y at 70 (Slot), Z at 86 (WR)
   const xX = 14;
   const hX = 30;
-  const yX = 66;
-  const srX = 78;
-  const zX = 88;
+  const yX = 70;
+  const zX = 86;
 
   const motionStartX = isRight ? zX : xX;
   const motionEndX = isRight ? 35 : 65;
@@ -73,18 +73,19 @@ function createEmptyRunPlay(
     category: 'EMPTY RUN',
     playType: 'RUN',
     direction: dir,
-    formationName: `Empty ${sideLabel} (5-Wide)`,
+    formationName: `Empty ${sideLabel} (8v8 3-OL Run)`,
     conceptName: `${englishAction} (${runnerType} Ball Carrier)`,
-    tags: ['Empty', 'Run Play', runnerType === 'QB' ? 'QB Run' : 'Motion Sweep', hasMotion ? 'Pre-Snap Motion' : 'Static'],
-    description: `7v7 Empty ${sideLabel} run concept featuring ${englishAction}. Designed to exploit vacated boxes in 5-wide sets.`,
+    tags: ['Empty', 'Run Play', runnerType === 'QB' ? 'QB Run' : 'Motion Sweep', hasMotion ? 'Pre-Snap Motion' : 'Static', '3 O-Line', '8v8'],
+    description: `8v8 Empty ${sideLabel} run concept (Finland University League) featuring ${englishAction}. Powered by a 3-man offensive line front (LG, C, RG) with perimeter blocking on vacated boxes.`,
     coachingPoints: [
       `Ball Carrier: ${runnerType}. Attack the designated gap/perimeter with decisive acceleration.`,
+      `3 O-Line: Guards and Center establish inside-out leverage and seal interior linebackers.`,
       hasMotion ? `Motion Timing: ${motionPlayer} goes in pre-snap motion across the formation.` : `Direct snap execution.`,
       `Perimeter Blocking: Receivers stalk-block defensive backs on the edge to spring the run.`,
     ],
     progressionReads: [
       { order: 1, playerId: runnerType === 'QB' ? 'QB' : (isRight ? 'Z' : 'X'), concept: `Primary Run Track (${runScheme})`, cue: 'Read defensive end / edge contain leverage' },
-      { order: 2, playerId: 'C', concept: 'Center Lead / Seal', cue: 'Seal interior linebacker' },
+      { order: 2, playerId: 'C', concept: '3 O-Line Interior Seal', cue: 'Seal interior linebacker' },
     ],
     qbDrop: 'QB Keep',
     players: {
@@ -105,7 +106,7 @@ function createEmptyRunPlay(
       C: {
         id: 'C',
         label: 'C',
-        positionName: 'Center',
+        positionName: 'Center (3 O-Line)',
         initialPos: { x: 50, y: 65 },
         roleDescription: 'Snap ball and execute run block',
         route: {
@@ -113,6 +114,38 @@ function createEmptyRunPlay(
           points: [
             { x: 50, y: 65, type: 'snap' },
             { x: runScheme.includes('LEFT') ? 46 : 54, y: 60, type: 'block', label: 'SEAL' },
+          ],
+          isBlocking: true,
+          color: '#f59e0b',
+        },
+      },
+      LG: {
+        id: 'LG',
+        label: 'LG',
+        positionName: 'Left Guard (3 O-Line)',
+        initialPos: { x: 44, y: 65 },
+        roleDescription: runScheme.includes('LEFT') ? 'Lead drive block left gap' : 'Cutoff block',
+        route: {
+          name: runScheme.includes('LEFT') ? 'Drive Block' : 'Cutoff Block',
+          points: [
+            { x: 44, y: 65, type: 'snap' },
+            { x: runScheme.includes('LEFT') ? 40 : 42, y: 58, type: 'block', label: 'BLOCK' },
+          ],
+          isBlocking: true,
+          color: '#f59e0b',
+        },
+      },
+      RG: {
+        id: 'RG',
+        label: 'RG',
+        positionName: 'Right Guard (3 O-Line)',
+        initialPos: { x: 56, y: 65 },
+        roleDescription: runScheme.includes('RIGHT') ? 'Lead drive block right gap' : 'Cutoff block',
+        route: {
+          name: runScheme.includes('RIGHT') ? 'Drive Block' : 'Cutoff Block',
+          points: [
+            { x: 56, y: 65, type: 'snap' },
+            { x: runScheme.includes('RIGHT') ? 60 : 58, y: 58, type: 'block', label: 'BLOCK' },
           ],
           isBlocking: true,
           color: '#f59e0b',
@@ -163,7 +196,7 @@ function createEmptyRunPlay(
       },
       Y: {
         id: 'Y',
-        label: 'Y (Slot-R1)',
+        label: 'Y (Slot-R)',
         positionName: 'Inside Right Slot',
         initialPos: { x: yX, y: 66 },
         roleDescription: 'Stalk block linebacker or safety',
@@ -175,27 +208,6 @@ function createEmptyRunPlay(
           ],
           isBlocking: true,
           color: '#f59e0b',
-        },
-      },
-      SR: {
-        id: 'SR',
-        label: 'SR (Slot-R2)',
-        positionName: 'Middle Right Slot',
-        initialPos: { x: srX, y: 66 },
-        roleDescription: (hasMotion && motionPlayer === 'SR') ? 'Pre-snap motion for counter flow' : 'Perimeter seal block',
-        motion: (hasMotion && motionPlayer === 'SR') ? {
-          startPos: { x: srX, y: 66 },
-          endPos: { x: 44, y: 73 },
-          type: 'across',
-        } : undefined,
-        route: {
-          name: (hasMotion && motionPlayer === 'SR' && runnerType === 'SR') ? 'Motion Counter Carrier' : 'Lead Block',
-          points: [
-            { x: srX, y: 66, type: 'snap' },
-            { x: srX - 4, y: 54, type: 'block', label: 'BLOCK' },
-          ],
-          isBlocking: true,
-          color: '#ec4899',
         },
       },
       Z: {
@@ -222,7 +234,7 @@ function createEmptyRunPlay(
           ],
           isBallCarrier: isRight && runnerType === 'WR',
           isBlocking: !(isRight && runnerType === 'WR'),
-          color: (isRight && runnerType === 'WR') ? '#ef4444' : '#a855f7',
+          color: (isRight && runnerType === 'WR') ? '#ef4444' : '#ec4899',
         },
       },
     },

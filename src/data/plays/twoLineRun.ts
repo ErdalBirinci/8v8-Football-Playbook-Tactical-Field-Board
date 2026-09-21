@@ -17,12 +17,13 @@ function createTwoLineRunPlay(
   const numPrefix = typeof playNumber === 'number' ? `${playNumber}. ` : '* ';
   const code = `${numPrefix}2 LINE ${playCodeSuffix}`;
 
-  // In 2 Line, receivers are stacked tandem:
-  // Left stack: WR1 at 26 y=65, WR2 stacked at 26 y=68
-  // Right stack: WR3 at 74 y=65, WR4 stacked at 74 y=68
-  // Center at 50 y=65, QB at 50 y=75, RB at 42 y=75
-  const leftStackX = 26;
-  const rightStackX = 74;
+  // 8v8 2-Line Stack Run with 3 O-Line (LG, C, RG) and 4 Receivers:
+  // Offensive Line: LG at 44, C at 50, RG at 56
+  // QB at 50
+  // Left stack: X (Front) at 24 y=65, H (Back) at 24 y=68
+  // Right stack: Z (Front) at 76 y=65, Y (Back) at 76 y=68
+  const leftStackX = 24;
+  const rightStackX = 76;
 
   let qbRouteName = 'QB Run Action';
   let qbPoints: RoutePoint[] = [{ x: 50, y: 75, type: 'snap' }];
@@ -68,17 +69,17 @@ function createTwoLineRunPlay(
     category: '2 LINE RUN',
     playType: 'RUN',
     direction: dir,
-    formationName: '2-Line Compressed Stack',
-    conceptName: `${englishAction} from Tandem Stack`,
-    tags: ['2 Line', 'Stack Formation', 'Run Play', runnerType === 'QB' ? 'QB Run' : 'Motion Run'],
-    description: `7v7 2-Line compressed stack formation running ${englishAction}. Tandem receivers create immediate natural seals on perimeter defenders.`,
+    formationName: '2-Line Stack Run (8v8 3-OL)',
+    conceptName: `8v8 ${englishAction} from Tandem Stack`,
+    tags: ['2 Line', 'Stack Formation', 'Run Play', runnerType === 'QB' ? 'QB Run' : 'Motion Run', '3 O-Line', '8v8'],
+    description: `8v8 2-Line stack run formation (Finland University League) running ${englishAction}. Blocked by a 3-man offensive line (LG, C, RG) with tandem receiver edge seals.`,
     coachingPoints: [
-      `Stack Alignment: Inside receivers line up 3 yards behind outside receivers.`,
-      `Pin & Pull Blocking: Front stack receiver pins inside, back stack receiver seals outside.`,
-      `Ball Carrier: ${runnerType}. Explode through the alley created by the compressed stack.`,
+      `Stack Alignment: Tandem receivers line up to create pin-and-pull edge seal opportunities.`,
+      `3 O-Line Leverage: Guards (LG/RG) and Center (C) create the interior gap surge.`,
+      `Ball Carrier: ${runnerType}. Explode through the alley opened by the line and stack blocks.`,
     ],
     progressionReads: [
-      { order: 1, playerId: runnerType === 'QB' ? 'QB' : 'WR1', concept: `Alley Read (${runScheme})`, cue: 'Follow stack lead block' },
+      { order: 1, playerId: runnerType === 'QB' ? 'QB' : 'X', concept: `Alley Read (${runScheme})`, cue: 'Follow stack lead block' },
     ],
     qbDrop: 'QB Keep',
     players: {
@@ -99,7 +100,7 @@ function createTwoLineRunPlay(
       C: {
         id: 'C',
         label: 'C',
-        positionName: 'Center',
+        positionName: 'Center (3 O-Line)',
         initialPos: { x: 50, y: 65 },
         roleDescription: 'Snap ball and seal nose guard / rusher',
         route: {
@@ -112,9 +113,41 @@ function createTwoLineRunPlay(
           color: '#f59e0b',
         },
       },
-      WR1: {
-        id: 'WR1',
-        label: 'WR-L (Front)',
+      LG: {
+        id: 'LG',
+        label: 'LG',
+        positionName: 'Left Guard (3 O-Line)',
+        initialPos: { x: 44, y: 65 },
+        roleDescription: runScheme.includes('LEFT') ? 'Lead kickout block on left edge' : 'Cutoff backside rusher',
+        route: {
+          name: runScheme.includes('LEFT') ? 'Kickout Block' : 'Cutoff Block',
+          points: [
+            { x: 44, y: 65, type: 'snap' },
+            { x: runScheme.includes('LEFT') ? 38 : 42, y: 58, type: 'block', label: 'BLOCK' },
+          ],
+          isBlocking: true,
+          color: '#f59e0b',
+        },
+      },
+      RG: {
+        id: 'RG',
+        label: 'RG',
+        positionName: 'Right Guard (3 O-Line)',
+        initialPos: { x: 56, y: 65 },
+        roleDescription: runScheme.includes('RIGHT') ? 'Lead kickout block on right edge' : 'Cutoff backside rusher',
+        route: {
+          name: runScheme.includes('RIGHT') ? 'Kickout Block' : 'Cutoff Block',
+          points: [
+            { x: 56, y: 65, type: 'snap' },
+            { x: runScheme.includes('RIGHT') ? 62 : 58, y: 58, type: 'block', label: 'BLOCK' },
+          ],
+          isBlocking: true,
+          color: '#f59e0b',
+        },
+      },
+      X: {
+        id: 'X',
+        label: 'X (Stack-Front L)',
         positionName: 'Left Stack Front Receiver',
         initialPos: { x: leftStackX, y: 65 },
         roleDescription: (hasMotion && !isRight && motionPlayer === 'WR') ? 'Motion across' : 'Perimeter crack block',
@@ -133,9 +166,9 @@ function createTwoLineRunPlay(
           color: '#38bdf8',
         },
       },
-      SR1: {
-        id: 'SR1',
-        label: 'SR-L (Back)',
+      H: {
+        id: 'H',
+        label: 'H (Stack-Back L)',
         positionName: 'Left Stack Back Receiver',
         initialPos: { x: leftStackX, y: 68 },
         roleDescription: (hasMotion && !isRight && motionPlayer === 'SR') ? 'Pre-snap motion fake' : 'Lead block around corner',
@@ -155,9 +188,9 @@ function createTwoLineRunPlay(
           color: runScheme === 'PONCIK_LEFT' ? '#ef4444' : '#10b981',
         },
       },
-      WR2: {
-        id: 'WR2',
-        label: 'WR-R (Front)',
+      Z: {
+        id: 'Z',
+        label: 'Z (Stack-Front R)',
         positionName: 'Right Stack Front Receiver',
         initialPos: { x: rightStackX, y: 65 },
         roleDescription: (hasMotion && isRight && motionPlayer === 'WR') ? 'Motion across' : 'Perimeter crack block',
@@ -176,9 +209,9 @@ function createTwoLineRunPlay(
           color: '#ec4899',
         },
       },
-      SR2: {
-        id: 'SR2',
-        label: 'SR-R (Back)',
+      Y: {
+        id: 'Y',
+        label: 'Y (Stack-Back R)',
         positionName: 'Right Stack Back Receiver',
         initialPos: { x: rightStackX, y: 68 },
         roleDescription: (hasMotion && isRight && motionPlayer === 'SR') ? 'Pre-snap motion fake' : 'Lead block around corner',
@@ -196,22 +229,6 @@ function createTwoLineRunPlay(
           isBallCarrier: runScheme === 'PONCIK_RIGHT',
           isBlocking: runScheme !== 'PONCIK_RIGHT',
           color: runScheme === 'PONCIK_RIGHT' ? '#ef4444' : '#a855f7',
-        },
-      },
-      RB: {
-        id: 'RB',
-        label: 'RB',
-        positionName: 'Running Back',
-        initialPos: { x: isRight ? 42 : 58, y: 75 },
-        roleDescription: 'Lead block through gap or check release',
-        route: {
-          name: 'Lead Block',
-          points: [
-            { x: isRight ? 42 : 58, y: 75, type: 'snap' },
-            { x: 50, y: 62, type: 'block', label: 'LEAD' },
-          ],
-          isBlocking: true,
-          color: '#f59e0b',
         },
       },
     },

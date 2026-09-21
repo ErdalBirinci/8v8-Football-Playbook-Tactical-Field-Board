@@ -35,7 +35,7 @@ export const CustomPlayDesigner: React.FC<CustomPlayDesignerProps> = ({
   onClose,
   onSaveCustomPlay,
 }) => {
-  const [playName, setPlayName] = useState('CUSTOM 7v7 PLAY');
+  const [playName, setPlayName] = useState('CUSTOM 8v8 PLAY');
   const [playCode, setPlayCode] = useState('CUSTOM 1 7 8');
   const [formation, setFormation] = useState('Trips Right');
   const [direction, setDirection] = useState<'RIGHT' | 'LEFT' | 'BALANCED'>('RIGHT');
@@ -87,9 +87,17 @@ export const CustomPlayDesigner: React.FC<CustomPlayDesignerProps> = ({
       id: 'Y',
       label: 'Y (Slot)',
       positionName: 'Middle Slot',
-      initialPos: { x: 76, y: 66 },
+      initialPos: { x: 74, y: 66 },
       roleDescription: 'Route 7',
-      route: { name: '7 - Corner', routeNumber: 7, points: generateRoutePoints(76, 66, 7, { isRightSide: true }).points, isSecondary: true, color: '#10b981' },
+      route: { name: '7 - Corner', routeNumber: 7, points: generateRoutePoints(74, 66, 7, { isRightSide: true }).points, isSecondary: true, color: '#10b981' },
+    },
+    W: {
+      id: 'W',
+      label: 'W (Slot-2)',
+      positionName: 'Inside Slot (+1 WR)',
+      initialPos: { x: 80, y: 66 },
+      roleDescription: 'Route 2',
+      route: { name: '2 - Slant', routeNumber: 2, points: generateRoutePoints(80, 66, 2, { isRightSide: true }).points, color: '#3b82f6' },
     },
     Z: {
       id: 'Z',
@@ -338,8 +346,8 @@ export const CustomPlayDesigner: React.FC<CustomPlayDesignerProps> = ({
       direction: direction,
       formationName: formation,
       conceptName: playName,
-      tags: ['Custom Play', 'Whiteboard Designed', formation],
-      description: `Custom coach-designed 7v7 play created in the tactical whiteboard designer with ${formation} alignment.`,
+      tags: ['Custom Play', 'Whiteboard Designed', formation, '8v8'],
+      description: `Custom coach-designed 8v8 play created in the tactical whiteboard designer with ${formation} alignment.`,
       progressionReads: [
         {
           order: 1,
@@ -418,10 +426,10 @@ export const CustomPlayDesigner: React.FC<CustomPlayDesignerProps> = ({
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-black text-slate-900 font-display">
-                7v7 Tactical Whiteboard Designer
+                8v8 Tactical Whiteboard Designer
               </h3>
               <p className="text-xs text-slate-500">
-                Drag tokens to align formations, save template presets, assign routes & export
+                Drag tokens to align 8v8 formations (+1 WR), save template presets, assign routes &amp; export
               </p>
             </div>
           </div>

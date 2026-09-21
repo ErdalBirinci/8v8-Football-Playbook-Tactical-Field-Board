@@ -59,7 +59,7 @@ export const GlossaryModal: React.FC<GlossaryModalProps> = ({
                 </span>
               </h3>
               <p className="text-xs text-slate-500">
-                Official 7v7 Football playbook terminology, tactical concepts &amp; formations in English and Finnish
+                Official 8v8 Football (Finland University League) playbook terminology, tactical concepts &amp; formations in English and Finnish
               </p>
             </div>
           </div>

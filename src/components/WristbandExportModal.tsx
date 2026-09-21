@@ -132,11 +132,19 @@ export const WristbandExportModal: React.FC<WristbandExportModalProps> = ({
         {/* Printable Grid Sheet */}
         <div className="p-6 overflow-y-auto bg-slate-50 print:bg-white print:text-black print:p-0">
           <div className="text-center mb-4 print:mb-2">
-            <h2 className="text-base font-black text-slate-900 print:text-black uppercase tracking-widest font-mono">
-              7v7 OFFICIAL OFFENSIVE PLAYBOOK CALL SHEET
-            </h2>
+            <div className="flex items-center justify-center gap-2.5 mb-1">
+              <img
+                src="/aalto-predators-logo.svg"
+                alt="Aalto Predators Logo"
+                className="w-7 h-7 object-contain inline-block rounded bg-black p-0.5"
+                referrerPolicy="no-referrer"
+              />
+              <h2 className="text-base font-black text-slate-900 print:text-black uppercase tracking-widest font-mono">
+                AALTO PREDATORS 8v8 CALL SHEET
+              </h2>
+            </div>
             <p className="text-xs text-slate-500 print:text-gray-600 font-mono">
-              Total Plays: {playsToPrint.length} | Generated for Wristband Insertion
+              Total Plays: {playsToPrint.length} | Finland University League | Wristband Insertion
             </p>
           </div>
 

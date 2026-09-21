@@ -18,21 +18,20 @@ function createTwinsPassPlay(
   const sideLabel = isRight ? 'Right' : 'Left';
   const code = `${playNumber}. TWINS ${dir} ${playCodeSuffix}`;
 
-  // Positions:
-  // Left: X at 16, H at 30
-  // Center: C at 50, QB at 50, RB at (isRight ? 42 : 58)
-  // Right: Y at 70, Z at 84
-  const xX = 16;
-  const hX = 30;
-  const yX = 70;
-  const zX = 84;
-  const rbX = isRight ? 42 : 58;
+  // 8v8 Twins Alignment with 3 O-Line (LG, C, RG) and 4 Receivers (X, H, Y, Z):
+  // Line of Scrimmage: LG at 44, C at 50, RG at 56
+  // QB at 50
+  // Left: X at 14 (Outside WR), H at 28 (Slot)
+  // Right: Y at 72 (Slot), Z at 86 (Outside WR)
+  const xX = 14;
+  const hX = 28;
+  const yX = 72;
+  const zX = 86;
 
   const zGen = generateRoutePoints(zX, 65, rightWR, { isRightSide: true });
   const yGen = generateRoutePoints(yX, 66, rightSlot, { isRightSide: true });
   const hGen = generateRoutePoints(hX, 66, leftSlot, { isRightSide: false });
   const xGen = generateRoutePoints(xX, 65, leftWR, { isRightSide: false });
-  const rbGen = generateRoutePoints(rbX, 75, rbRoute, { isRightSide: isRight });
 
   return {
     id: `twins-pass-${playNumber}-${dir.toLowerCase()}`,
@@ -43,19 +42,20 @@ function createTwinsPassPlay(
     category: 'TWINS PASS',
     playType: isPlayAction ? 'PLAY_ACTION' : 'PASS',
     direction: dir,
-    formationName: `Twins ${sideLabel} (2x2 Balanced Spread)`,
+    formationName: `Twins ${sideLabel} (8v8 3-OL Balanced)`,
     conceptName: `${englishAction}`,
-    tags: ['Twins', '2x2', 'Pass Concept', isBoot ? 'Bootleg Rollout' : 'Pocket Pass'],
-    description: `7v7 Twins ${sideLabel} 2x2 pass concept featuring ${englishAction}. Balanced receiver distribution with 2 receivers to each boundary.`,
+    tags: ['Twins', '2x2', 'Pass Concept', isBoot ? 'Bootleg Rollout' : 'Pocket Pass', '3 O-Line', '8v8'],
+    description: `8v8 Twins ${sideLabel} pass concept (Finland University League) featuring ${englishAction}. Protected by 3 offensive linemen (LG, C, RG) with a 4-receiver spread (X, H, Y, Z).`,
     coachingPoints: [
-      isBoot ? `QB Play-Action fake to RB, roll out to ${sideLabel} edge on the run.` : `3-step shotgun rhythm drop.`,
-      `Primary Read: Check strong-side 2-man combination (${isRight ? rightWR + '/' + rightSlot : leftWR + '/' + leftSlot}).`,
-      `Checkdown: Running back releasing into the flat (${rbRoute}).`,
+      isBoot ? `QB Play-Action fake, roll out to ${sideLabel} edge behind 3-man offensive line protection.` : `3-step shotgun rhythm drop inside the 3-man pocket.`,
+      `Primary Read: Check ${sideLabel.toLowerCase()}-side combination (${isRight ? `${rightWR} / ${rightSlot}` : `${leftWR} / ${leftSlot}`}).`,
+      `Secondary Read: Backside combination to exploit vacant soft spots against rotating safeties.`,
     ],
     progressionReads: [
       { order: 1, playerId: isRight ? 'Z' : 'X', concept: `Outside Route (${isRight ? rightWR : leftWR})`, cue: 'Corner cushion and boundary leverage' },
       { order: 2, playerId: isRight ? 'Y' : 'H', concept: `Slot Route (${isRight ? rightSlot : leftSlot})`, cue: 'Target seam or intermediate void' },
-      { order: 3, playerId: 'RB', concept: `RB Checkdown (${rbRoute})`, cue: 'Underneath outlet' },
+      { order: 3, playerId: isRight ? 'H' : 'Y', concept: `Backside Slot (${isRight ? leftSlot : rightSlot})`, cue: 'Weak side underneath window' },
+      { order: 4, playerId: isRight ? 'X' : 'Z', concept: `Backside Outside (${isRight ? leftWR : rightWR})`, cue: 'Deep boundary alert' },
     ],
     qbDrop: isBoot ? (isRight ? 'Rollout Right' : 'Rollout Left') : (isPlayAction ? 'Play Action Mesh' : 'Shotgun 3-Step'),
     players: {
@@ -81,38 +81,38 @@ function createTwinsPassPlay(
       C: {
         id: 'C',
         label: 'C',
-        positionName: 'Center',
+        positionName: 'Center (3 O-Line)',
         initialPos: { x: 50, y: 65 },
-        roleDescription: 'Snap ball and execute pass protection',
+        roleDescription: 'Snap ball and anchor pass pocket',
         route: {
           name: 'Pass Protection',
           points: [{ x: 50, y: 65, type: 'snap' }, { x: 50, y: 64, type: 'block', label: 'PRO' }],
           isBlocking: true,
         },
       },
-      Z: {
-        id: 'Z',
-        label: 'Z (WR-R)',
-        positionName: 'Outside Right WR',
-        initialPos: { x: zX, y: 65 },
-        roleDescription: `Runs route ${rightWR}`,
-        route: { name: zGen.name, routeNumber: rightWR, points: zGen.points, isPrimary: isRight, color: '#38bdf8' },
+      LG: {
+        id: 'LG',
+        label: 'LG',
+        positionName: 'Left Guard (3 O-Line)',
+        initialPos: { x: 44, y: 65 },
+        roleDescription: isBoot && isRight ? 'Slide protect frontside' : 'Pass protection',
+        route: {
+          name: 'Pass Protection',
+          points: [{ x: 44, y: 65, type: 'snap' }, { x: isBoot && isRight ? 46 : 44, y: 64, type: 'block', label: 'PRO' }],
+          isBlocking: true,
+        },
       },
-      Y: {
-        id: 'Y',
-        label: 'Y (Slot-R)',
-        positionName: 'Inside Right Slot',
-        initialPos: { x: yX, y: 66 },
-        roleDescription: `Runs route ${rightSlot}`,
-        route: { name: yGen.name, routeNumber: rightSlot, points: yGen.points, isSecondary: isRight, color: '#10b981' },
-      },
-      H: {
-        id: 'H',
-        label: 'H (Slot-L)',
-        positionName: 'Inside Left Slot',
-        initialPos: { x: hX, y: 66 },
-        roleDescription: `Runs route ${leftSlot}`,
-        route: { name: hGen.name, routeNumber: leftSlot, points: hGen.points, isSecondary: !isRight, color: '#f59e0b' },
+      RG: {
+        id: 'RG',
+        label: 'RG',
+        positionName: 'Right Guard (3 O-Line)',
+        initialPos: { x: 56, y: 65 },
+        roleDescription: isBoot && !isRight ? 'Slide protect frontside' : 'Pass protection',
+        route: {
+          name: 'Pass Protection',
+          points: [{ x: 56, y: 65, type: 'snap' }, { x: isBoot && !isRight ? 54 : 56, y: 64, type: 'block', label: 'PRO' }],
+          isBlocking: true,
+        },
       },
       X: {
         id: 'X',
@@ -122,13 +122,29 @@ function createTwinsPassPlay(
         roleDescription: `Runs route ${leftWR}`,
         route: { name: xGen.name, routeNumber: leftWR, points: xGen.points, isPrimary: !isRight, color: '#ec4899' },
       },
-      RB: {
-        id: 'RB',
-        label: 'RB',
-        positionName: 'Running Back',
-        initialPos: { x: rbX, y: 75 },
-        roleDescription: isPlayAction ? `Fake run then release on ${rbRoute}` : `Check-release ${rbRoute}`,
-        route: { name: rbGen.name, points: rbGen.points, isCheckdown: true, color: '#a855f7' },
+      H: {
+        id: 'H',
+        label: 'H (Slot-L)',
+        positionName: 'Inside Left Slot',
+        initialPos: { x: hX, y: 66 },
+        roleDescription: `Runs route ${leftSlot}`,
+        route: { name: hGen.name, routeNumber: leftSlot, points: hGen.points, isSecondary: !isRight, color: '#8b5cf6' },
+      },
+      Y: {
+        id: 'Y',
+        label: 'Y (Slot-R)',
+        positionName: 'Inside Right Slot',
+        initialPos: { x: yX, y: 66 },
+        roleDescription: `Runs route ${rightSlot}`,
+        route: { name: yGen.name, routeNumber: rightSlot, points: yGen.points, isSecondary: isRight, color: '#10b981' },
+      },
+      Z: {
+        id: 'Z',
+        label: 'Z (WR-R)',
+        positionName: 'Outside Right WR',
+        initialPos: { x: zX, y: 65 },
+        roleDescription: `Runs route ${rightWR}`,
+        route: { name: zGen.name, routeNumber: rightWR, points: zGen.points, isPrimary: isRight, color: '#38bdf8' },
       },
     },
   };

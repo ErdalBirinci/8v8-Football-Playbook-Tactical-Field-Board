@@ -5,6 +5,9 @@ import {
   ROSTER_PRESETS,
   TeamInfo,
   DEFAULT_ROSTER,
+  DEFAULT_TEAM_INFO,
+  loadTeamInfoFromStorage,
+  saveTeamInfoToStorage,
 } from '../data/rosterData';
 import {
   Users,
@@ -25,17 +28,22 @@ import {
   Shield,
   Zap,
   Info,
+  Layers,
+  LayoutGrid,
+  Flame,
 } from 'lucide-react';
+import { DepthChartDndSection } from './DepthChartDndSection';
 
 interface RosterManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
   roster: RosterPlayer[];
   onUpdateRoster: (newRoster: RosterPlayer[]) => void;
-  teamInfo: TeamInfo;
-  onUpdateTeamInfo: (info: TeamInfo) => void;
+  teamInfo?: TeamInfo;
+  onUpdateTeamInfo?: (info: TeamInfo) => void;
   tokenDisplayMode: TokenDisplayMode;
-  onUpdateTokenMode: (mode: TokenDisplayMode) => void;
+  onUpdateTokenMode?: (mode: TokenDisplayMode) => void;
+  onUpdateTokenDisplayMode?: (mode: TokenDisplayMode) => void;
 }
 
 export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
@@ -43,14 +51,31 @@ export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
   onClose,
   roster,
   onUpdateRoster,
-  teamInfo,
+  teamInfo: propTeamInfo,
   onUpdateTeamInfo,
   tokenDisplayMode,
   onUpdateTokenMode,
+  onUpdateTokenDisplayMode,
 }) => {
+  const [internalTeamInfo, setInternalTeamInfo] = useState<TeamInfo>(() => loadTeamInfoFromStorage());
+  const effectiveTeamInfo = propTeamInfo || internalTeamInfo || DEFAULT_TEAM_INFO;
+
+  const handleUpdateTeamInfo = (newInfo: TeamInfo) => {
+    setInternalTeamInfo(newInfo);
+    saveTeamInfoToStorage(newInfo);
+    if (onUpdateTeamInfo) {
+      onUpdateTeamInfo(newInfo);
+    }
+  };
+
+  const handleSetTokenMode = (mode: TokenDisplayMode) => {
+    if (onUpdateTokenMode) onUpdateTokenMode(mode);
+    if (onUpdateTokenDisplayMode) onUpdateTokenDisplayMode(mode);
+  };
   const [searchQuery, setSearchQuery] = useState('');
   const [positionFilter, setPositionFilter] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState<'depth_chart' | 'full_roster' | 'team_settings'>('depth_chart');
+  const [depthChartViewMode, setDepthChartViewMode] = useState<'dnd' | 'slots'>('dnd');
 
   // Player Create/Edit state
   const [isEditingPlayer, setIsEditingPlayer] = useState(false);
@@ -221,6 +246,80 @@ export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
     }
   };
 
+  // Intelligently Auto-Assign Roster to missing 8v8 slot positions based on primaryPosition
+  const handleAutoAssignRoster = () => {
+    const updated = [...roster];
+    let assignedCount = 0;
+
+    // Check which slots are currently unfilled
+    const unfilledSlots = OFFENSIVE_SLOTS.filter(
+      (slot) => !updated.some((p) => p.assignedSlot === slot.id)
+    );
+
+    if (unfilledSlots.length === 0) {
+      showToast('All 8 offensive starting slots are already assigned!');
+      return;
+    }
+
+    // Priority mapping weights: strict match gets highest priority, multi-position/hybrid gets next
+    // Slot assignment order prioritizing specific roles (QB, C, LG, RG, RB) before receivers (X, Z, Y)
+    const sortedSlots = [...unfilledSlots].sort((a, b) => {
+      const priorityOrder: Record<string, number> = { QB: 1, C: 2, LG: 3, RG: 4, RB: 5, X: 6, Z: 7, Y: 8 };
+      return (priorityOrder[a.id] || 99) - (priorityOrder[b.id] || 99);
+    });
+
+    sortedSlots.forEach((slot) => {
+      // Find unassigned candidate players
+      const unassignedPlayers = updated.filter((p) => !p.assignedSlot);
+
+      if (unassignedPlayers.length === 0) return;
+
+      // Match scoring function:
+      // 1. Exact match with slot recommendation rank (e.g. recommendedPos[0] = 100, recommendedPos[1] = 80)
+      // 2. High overall ratings (Speed + Hands) as tiebreaker
+      const scoredCandidates = unassignedPlayers
+        .map((p) => {
+          let score = 0;
+          const posIdx = slot.recommendedPos.indexOf(p.primaryPosition);
+
+          if (posIdx === 0) {
+            score += 100; // Primary ideal match
+          } else if (posIdx > 0) {
+            score += 70 - posIdx * 10; // Secondary recommended match
+          } else if (['OL', 'OT', 'OG', 'G', 'C', 'LG', 'RG'].includes(p.primaryPosition) && ['LG', 'RG', 'C'].includes(slot.id)) {
+            score += 85; // 3 O-Line specialist match
+          } else if (p.primaryPosition === 'ATH') {
+            score += 50; // Athlete versatile match
+          } else if (['WR', 'SLOT', 'TE'].includes(p.primaryPosition) && ['X', 'Z', 'Y'].includes(slot.id)) {
+            score += 35; // Compatible pass catcher match
+          } else {
+            score += 10; // Fallback reserve
+          }
+
+          // Quality tiebreaker using ratings
+          const qualityBonus = ((p.speedRating || 90) + (p.handsRating || 90)) / 20;
+          score += qualityBonus;
+
+          return { player: p, score };
+        })
+        .sort((a, b) => b.score - a.score);
+
+      const best = scoredCandidates[0]?.player;
+      if (best) {
+        best.assignedSlot = slot.id;
+        best.status = 'starter';
+        assignedCount++;
+      }
+    });
+
+    onUpdateRoster(updated);
+    if (assignedCount > 0) {
+      showToast(`Auto-assigned ${assignedCount} player${assignedCount > 1 ? 's' : ''} based on positions`);
+    } else {
+      showToast('No eligible unassigned players found to map');
+    }
+  };
+
   // Quick Assign player to slot
   const handleAssignSlot = (slotId: string, playerId: string) => {
     const updated = roster.map((p) => {
@@ -258,12 +357,12 @@ export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
 
   // Export JSON
   const handleExportJSON = () => {
-    const dataStr = JSON.stringify({ teamInfo, roster, exportDate: new Date().toISOString() }, null, 2);
+    const dataStr = JSON.stringify({ teamInfo: effectiveTeamInfo, roster, exportDate: new Date().toISOString() }, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${teamInfo.teamName.replace(/\s+/g, '_')}_7v7_Roster.json`;
+    link.download = `${(effectiveTeamInfo?.teamName || 'Aalto_Predators').replace(/\s+/g, '_')}_8v8_Roster.json`;
     link.click();
     URL.revokeObjectURL(url);
     showToast('Exported roster JSON');
@@ -287,7 +386,7 @@ export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${teamInfo.teamName.replace(/\s+/g, '_')}_Roster.csv`;
+    link.download = `${(effectiveTeamInfo?.teamName || 'Aalto_Predators').replace(/\s+/g, '_')}_Roster.csv`;
     link.click();
     URL.revokeObjectURL(url);
     showToast('Exported roster CSV');
@@ -379,6 +478,14 @@ export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
           {/* Quick Actions & Close */}
           <div className="flex items-center gap-2">
             <button
+              onClick={handleAutoAssignRoster}
+              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+              title="Intelligently auto-map unassigned players to offensive starting slots based on position"
+            >
+              <Sparkles className="w-4 h-4 text-slate-950" />
+              <span>Auto-Assign Roster</span>
+            </button>
+            <button
               onClick={handleStartAdd}
               className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
             >
@@ -400,14 +507,16 @@ export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
           {/* Navigation Tabs */}
           <div className="flex items-center bg-slate-200/80 p-1 rounded-xl gap-1">
             <button
+              id="roster-tab-depth-chart"
               onClick={() => setActiveTab('depth_chart')}
-              className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'depth_chart'
                   ? 'bg-white text-blue-700 shadow-xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              7v7 Starting Lineup
+              <Flame className="w-3.5 h-3.5 text-blue-600" />
+              <span>Depth Chart &amp; Lineup</span>
             </button>
             <button
               onClick={() => setActiveTab('full_roster')}
@@ -447,7 +556,7 @@ export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
               ).map((mode) => (
                 <button
                   key={mode.id}
-                  onClick={() => onUpdateTokenMode(mode.id)}
+                  onClick={() => handleSetTokenMode(mode.id)}
                   className={`px-2 py-1 rounded text-[11px] font-mono font-bold transition-all cursor-pointer ${
                     tokenDisplayMode === mode.id
                       ? 'bg-blue-600 text-white shadow-2xs'
@@ -483,184 +592,213 @@ export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
 
         {/* ================= MODAL BODY ================= */}
         <div className="flex-1 overflow-y-auto p-5 space-y-6">
-          {/* ================= TAB 1: 7v7 STARTING LINEUP DEPTH CHART ================= */}
+          {/* ================= TAB 1: 8v8 STARTING LINEUP & DEPTH CHART ================= */}
           {activeTab === 'depth_chart' && (
             <div className="space-y-6">
-              {/* Informative Banner */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 mt-0.5">
-                    <Shield className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">
-                      7v7 Offensive Slot Assignments
-                    </h3>
-                    <p className="text-xs text-slate-600 max-w-2xl mt-0.5">
-                      Assigning a player to an offensive slot updates their jersey number on the 2D FieldBoard, route cards, whiteboard, and wristband play sheets instantly.
-                    </p>
-                  </div>
+              {/* Depth Chart View Mode Selector & Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 p-2 rounded-2xl border border-slate-200">
+                <div className="flex items-center gap-1.5 bg-slate-200/80 p-1 rounded-xl">
+                  <button
+                    id="depth-view-dnd"
+                    onClick={() => setDepthChartViewMode('dnd')}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      depthChartViewMode === 'dnd'
+                        ? 'bg-white text-blue-700 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Flame className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Drag &amp; Drop Depth Chart</span>
+                  </button>
+                  <button
+                    id="depth-view-slots"
+                    onClick={() => setDepthChartViewMode('slots')}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      depthChartViewMode === 'slots'
+                        ? 'bg-white text-blue-700 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
+                    <span>8v8 Formation Slots Grid</span>
+                  </button>
                 </div>
+
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => {
-                      // Auto-assign starters based on position recommendations
-                      const updated = [...roster];
-                      OFFENSIVE_SLOTS.forEach((slot) => {
-                        const currentAssigned = updated.find((p) => p.assignedSlot === slot.id);
-                        if (!currentAssigned) {
-                          const candidate = updated.find(
-                            (p) => !p.assignedSlot && slot.recommendedPos.includes(p.primaryPosition)
-                          );
-                          if (candidate) {
-                            candidate.assignedSlot = slot.id;
-                            candidate.status = 'starter';
-                          }
-                        }
-                      });
-                      onUpdateRoster(updated);
-                      showToast('Auto-assigned best matching starters');
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-blue-700 font-bold text-xs border border-blue-200 shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                    onClick={handleAutoAssignRoster}
+                    className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                    title="Intelligently auto-map players to missing positions based on primary position and ratings"
                   >
-                    <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-                    <span>Auto-Fill Depth Chart</span>
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                    <span>Auto-Assign Starters</span>
                   </button>
                 </div>
               </div>
 
-              {/* 7 Slot Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {OFFENSIVE_SLOTS.map((slot) => {
-                  const assignedPlayer = roster.find((p) => p.assignedSlot === slot.id);
-                  const candidateReplacements = roster.filter((p) => p.id !== assignedPlayer?.id);
+              {/* View 1: Drag and Drop Positional Depth Chart (WRs, O-Line, QBs, RBs) */}
+              {depthChartViewMode === 'dnd' && (
+                <DepthChartDndSection
+                  roster={roster}
+                  onUpdateRoster={onUpdateRoster}
+                  onShowToast={showToast}
+                />
+              )}
 
-                  return (
-                    <div
-                      key={slot.id}
-                      className={`rounded-2xl p-4 border transition-all relative ${
-                        assignedPlayer
-                          ? 'bg-white border-slate-200 shadow-sm hover:shadow-md'
-                          : 'bg-amber-50/50 border-dashed border-amber-300'
-                      }`}
-                    >
-                      {/* Slot Header */}
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                        <div className="flex items-center gap-2">
-                          <span className="w-8 h-8 rounded-xl bg-slate-900 text-white font-mono font-black text-sm flex items-center justify-center">
-                            {slot.id}
-                          </span>
-                          <div>
-                            <h4 className="text-xs font-bold text-slate-900 leading-tight">
-                              {slot.name}
-                            </h4>
-                            <span className="text-[10px] text-slate-500 font-mono">
-                              Rec: {slot.recommendedPos.join(', ')}
-                            </span>
-                          </div>
-                        </div>
-
-                        {assignedPlayer && (
-                          <button
-                            onClick={() => handleUnassignSlot(slot.id)}
-                            className="text-slate-400 hover:text-red-600 p-1 rounded transition-colors cursor-pointer"
-                            title="Unassign Starter"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        )}
+              {/* View 2: 8v8 Field Formation Slots Grid */}
+              {depthChartViewMode === 'slots' && (
+                <div className="space-y-6">
+                  {/* Informative Banner */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                        <Shield className="w-4 h-4" />
                       </div>
-
-                      {/* Assigned Player Details */}
-                      {assignedPlayer ? (
-                        <div className="mt-3 space-y-3">
-                          <div className="flex items-center gap-3">
-                            {/* Jersey Token Badge */}
-                            <div
-                              className="w-12 h-12 rounded-2xl flex flex-col items-center justify-center text-white font-mono font-black text-lg shadow-sm shrink-0 border-2 border-white"
-                              style={{ backgroundColor: assignedPlayer.avatarColor || '#2563eb' }}
-                            >
-                              <span className="text-[9px] font-sans font-bold opacity-80 uppercase leading-none">
-                                #{assignedPlayer.jerseyNumber}
-                              </span>
-                              <span className="text-sm font-black leading-none mt-0.5">
-                                {assignedPlayer.primaryPosition}
-                              </span>
-                            </div>
-
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <h5 className="text-sm font-black text-slate-900 truncate">
-                                  {assignedPlayer.name}
-                                </h5>
-                              </div>
-                              <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 font-mono">
-                                <span className="flex items-center gap-1 text-emerald-600 font-bold">
-                                  <Zap className="w-3 h-3" /> SPD {assignedPlayer.speedRating || 90}
-                                </span>
-                                <span>•</span>
-                                <span className="font-bold text-blue-600">
-                                  HND {assignedPlayer.handsRating || 90}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {assignedPlayer.notes && (
-                            <p className="text-[11px] text-slate-600 bg-slate-50 rounded-lg p-2 italic leading-relaxed">
-                              "{assignedPlayer.notes}"
-                            </p>
-                          )}
-
-                          {/* Quick Swap Dropdown */}
-                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
-                            <span className="text-[11px] text-slate-400 font-medium">Replace with:</span>
-                            <select
-                              value=""
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  handleAssignSlot(slot.id, e.target.value);
-                                }
-                              }}
-                              className="text-[11px] bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg px-2 py-1 font-medium text-slate-700 cursor-pointer"
-                            >
-                              <option value="">Swap Player...</option>
-                              {candidateReplacements.map((cand) => (
-                                <option key={cand.id} value={cand.id}>
-                                  #{cand.jerseyNumber} {cand.name} ({cand.primaryPosition})
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mt-4 text-center py-4 space-y-2">
-                          <p className="text-xs text-amber-800 font-medium">
-                            No starter assigned
-                          </p>
-                          <select
-                            value=""
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                handleAssignSlot(slot.id, e.target.value);
-                              }
-                            }}
-                            className="w-full text-xs bg-white border border-amber-300 text-amber-900 rounded-xl px-3 py-2 font-bold shadow-2xs cursor-pointer hover:bg-amber-50"
-                          >
-                            <option value="">Select Starter from Roster...</option>
-                            {roster.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                #{p.jerseyNumber} {p.name} ({p.primaryPosition}){' '}
-                                {p.assignedSlot ? `[Currently ${p.assignedSlot}]` : ''}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-900">
+                          8v8 Offensive Slot Assignments
+                        </h3>
+                        <p className="text-xs text-slate-600 max-w-2xl mt-0.5">
+                          Assigning a player to an offensive slot updates their jersey number on the 2D FieldBoard, route cards, whiteboard, and wristband play sheets instantly.
+                        </p>
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+
+                  {/* 7 Slot Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {OFFENSIVE_SLOTS.map((slot) => {
+                      const assignedPlayer = roster.find((p) => p.assignedSlot === slot.id);
+                      const candidateReplacements = roster.filter((p) => p.id !== assignedPlayer?.id);
+
+                      return (
+                        <div
+                          key={slot.id}
+                          className={`rounded-2xl p-4 border transition-all relative ${
+                            assignedPlayer
+                              ? 'bg-white border-slate-200 shadow-sm hover:shadow-md'
+                              : 'bg-amber-50/50 border-dashed border-amber-300'
+                          }`}
+                        >
+                          {/* Slot Header */}
+                          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <div className="flex items-center gap-2">
+                              <span className="w-8 h-8 rounded-xl bg-slate-900 text-white font-mono font-black text-sm flex items-center justify-center">
+                                {slot.id}
+                              </span>
+                              <div>
+                                <h4 className="text-xs font-bold text-slate-900 leading-tight">
+                                  {slot.name}
+                                </h4>
+                                <span className="text-[10px] text-slate-500 font-mono">
+                                  Rec: {slot.recommendedPos.join(', ')}
+                                </span>
+                              </div>
+                            </div>
+
+                            {assignedPlayer && (
+                              <button
+                                onClick={() => handleUnassignSlot(slot.id)}
+                                className="text-slate-400 hover:text-red-600 p-1 rounded transition-colors cursor-pointer"
+                                title="Unassign Starter"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Assigned Player Details */}
+                          {assignedPlayer ? (
+                            <div className="mt-3 space-y-3">
+                              <div className="flex items-center gap-3">
+                                {/* Jersey Token Badge */}
+                                <div
+                                  className="w-12 h-12 rounded-2xl flex flex-col items-center justify-center text-white font-mono font-black text-lg shadow-sm shrink-0 border-2 border-white"
+                                  style={{ backgroundColor: assignedPlayer.avatarColor || '#2563eb' }}
+                                >
+                                  <span className="text-[9px] font-sans font-bold opacity-80 uppercase leading-none">
+                                    #{assignedPlayer.jerseyNumber}
+                                  </span>
+                                  <span className="text-sm font-black leading-none mt-0.5">
+                                    {assignedPlayer.primaryPosition}
+                                  </span>
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <h5 className="text-sm font-black text-slate-900 truncate">
+                                      {assignedPlayer.name}
+                                    </h5>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1 text-[11px] text-slate-500 font-mono">
+                                    <span className="flex items-center gap-1 text-emerald-600 font-bold">
+                                      <Zap className="w-3 h-3" /> SPD {assignedPlayer.speedRating || 90}
+                                    </span>
+                                    <span>•</span>
+                                    <span className="font-bold text-blue-600">
+                                      HND {assignedPlayer.handsRating || 90}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {assignedPlayer.notes && (
+                                <p className="text-[11px] text-slate-600 bg-slate-50 rounded-lg p-2 italic leading-relaxed">
+                                  "{assignedPlayer.notes}"
+                                </p>
+                              )}
+
+                              {/* Quick Swap Dropdown */}
+                              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                                <span className="text-[11px] text-slate-400 font-medium">Replace with:</span>
+                                <select
+                                  value=""
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      handleAssignSlot(slot.id, e.target.value);
+                                    }
+                                  }}
+                                  className="text-[11px] bg-slate-100 hover:bg-slate-200 border border-slate-300 rounded-lg px-2 py-1 font-medium text-slate-700 cursor-pointer"
+                                >
+                                  <option value="">Swap Player...</option>
+                                  {candidateReplacements.map((cand) => (
+                                    <option key={cand.id} value={cand.id}>
+                                      #{cand.jerseyNumber} {cand.name} ({cand.primaryPosition})
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="mt-4 text-center py-4 space-y-2">
+                              <p className="text-xs text-amber-800 font-medium">
+                                No starter assigned
+                              </p>
+                              <select
+                                value=""
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleAssignSlot(slot.id, e.target.value);
+                                  }
+                                }}
+                                className="w-full text-xs bg-white border border-amber-300 text-amber-900 rounded-xl px-3 py-2 font-bold shadow-2xs cursor-pointer hover:bg-amber-50"
+                              >
+                                <option value="">Select Starter from Roster...</option>
+                                {roster.map((p) => (
+                                  <option key={p.id} value={p.id}>
+                                    #{p.jerseyNumber} {p.name} ({p.primaryPosition}){' '}
+                                    {p.assignedSlot ? `[Currently ${p.assignedSlot}]` : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -707,8 +845,16 @@ export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
                   ))}
                 </div>
 
-                {/* Export & Print */}
+                {/* Export & Auto-Assign Actions */}
                 <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={handleAutoAssignRoster}
+                    className="px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200 flex items-center gap-1 shadow-2xs cursor-pointer"
+                    title="Auto-assign unassigned roster players to open 8v8 offensive slots based on position"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Auto-Assign</span>
+                  </button>
                   <button
                     onClick={handleExportCSV}
                     className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-medium border border-slate-200 flex items-center gap-1 shadow-2xs cursor-pointer"
@@ -737,7 +883,7 @@ export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
                         <th className="py-3 px-4"># Jersey</th>
                         <th className="py-3 px-4">Player Name</th>
                         <th className="py-3 px-4">Position</th>
-                        <th className="py-3 px-4">Assigned 7v7 Slot</th>
+                        <th className="py-3 px-4">Assigned 8v8 Slot</th>
                         <th className="py-3 px-4">Ratings</th>
                         <th className="py-3 px-4">Notes & Attributes</th>
                         <th className="py-3 px-4 text-right">Actions</th>
@@ -1004,8 +1150,8 @@ export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
                     <label className="block text-slate-500 font-medium mb-1">Team Name</label>
                     <input
                       type="text"
-                      value={teamInfo.teamName}
-                      onChange={(e) => onUpdateTeamInfo({ ...teamInfo, teamName: e.target.value })}
+                      value={effectiveTeamInfo.teamName}
+                      onChange={(e) => handleUpdateTeamInfo({ ...effectiveTeamInfo, teamName: e.target.value })}
                       className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     />
                   </div>
@@ -1013,8 +1159,8 @@ export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
                     <label className="block text-slate-500 font-medium mb-1">Head Coach</label>
                     <input
                       type="text"
-                      value={teamInfo.headCoach}
-                      onChange={(e) => onUpdateTeamInfo({ ...teamInfo, headCoach: e.target.value })}
+                      value={effectiveTeamInfo.headCoach}
+                      onChange={(e) => handleUpdateTeamInfo({ ...effectiveTeamInfo, headCoach: e.target.value })}
                       className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     />
                   </div>
@@ -1022,9 +1168,9 @@ export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
                     <label className="block text-slate-500 font-medium mb-1">Offensive Coordinator</label>
                     <input
                       type="text"
-                      value={teamInfo.offensiveCoordinator}
+                      value={effectiveTeamInfo.offensiveCoordinator}
                       onChange={(e) =>
-                        onUpdateTeamInfo({ ...teamInfo, offensiveCoordinator: e.target.value })
+                        handleUpdateTeamInfo({ ...effectiveTeamInfo, offensiveCoordinator: e.target.value })
                       }
                       className="w-full px-3 py-2 border border-slate-200 rounded-xl font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     />
@@ -1118,7 +1264,7 @@ export const RosterManagementModal: React.FC<RosterManagementModalProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Assigned 7v7 Slot
+                    Assigned 8v8 Slot
                   </label>
                   <select
                     value={formSlot}

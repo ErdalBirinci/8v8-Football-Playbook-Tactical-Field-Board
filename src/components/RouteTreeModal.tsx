@@ -39,7 +39,7 @@ export const RouteTreeModal: React.FC<RouteTreeModalProps> = ({
             </div>
             <div>
               <h3 className="text-lg font-black text-slate-900 font-display flex items-center gap-2">
-                <span>Official 7v7 Route Tree (0 - 9 System)</span>
+                <span>Official 8v8 Route Tree (0 - 9 System)</span>
                 <span className="text-xs font-mono px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold">
                   Heittoreitit 0 - 9
                 </span>

@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Play, DefensivePlayer, DefenseScheme, PlayerAssignment, RosterPlayer, TokenDisplayMode } from '../types';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Play, DefensivePlayer, DefenseScheme, PlayerAssignment, RosterPlayer, TokenDisplayMode, DrillTrainingSession, DrillCone } from '../types';
 import { getPlayerAssignedToSlot } from '../data/rosterData';
+import { getPlayCoachingCues } from '../utils/coachingCuesStorage';
 import {
   detectConceptsForPlay,
   ROUTE_CONCEPTS_DATABASE,
@@ -20,7 +21,18 @@ import {
   ZoomIn,
   ZoomOut,
   Expand,
+  Compass,
+  Flame,
+  Volume2,
+  Timer,
+  Eye,
+  Repeat,
+  Target,
+  CheckCircle2,
+  Zap,
+  Grid,
 } from 'lucide-react';
+import { getTeamBranding } from '../utils/teamBranding';
 
 interface FieldBoardProps {
   play: Play;
@@ -31,9 +43,11 @@ interface FieldBoardProps {
   showFullRoutes: boolean;
   showLabels: boolean;
   showZones: boolean;
+  showFieldGrid?: boolean;
+  onToggleFieldGrid?: () => void;
   selectedPlayerId?: string | null;
   onSelectPlayer?: (playerId: string | null) => void;
-  fieldTheme: 'turf' | 'tactical' | 'chalkboard';
+  fieldTheme: 'turf' | 'tactical' | 'chalkboard' | 'stadium-night';
   onTogglePlay?: () => void;
   onSeek?: (progress: number) => void;
   onOpenWhiteboard?: () => void;
@@ -46,8 +60,20 @@ interface FieldBoardProps {
   onOpenCoachingModal?: () => void;
   activeRouteConceptId?: string;
   onSelectRouteConceptId?: (id: string) => void;
+  onOpenFormationGallery?: () => void;
   boardScale?: '1.0x' | '1.5x' | 'theater';
   onToggleBoardScale?: (scale: '1.0x' | '1.5x' | 'theater') => void;
+  // Drill Training & Auto-Loop Props
+  drillTrainingState?: DrillTrainingSession | null;
+  onToggleDrillAutoLoop?: () => void;
+  onIncrementDrillRep?: () => void;
+  onDecrementDrillRep?: () => void;
+  onResetDrillReps?: () => void;
+  onChangeDrillTargetReps?: (reps: number) => void;
+  onChangeDrillCadenceDelay?: (delayMs: number) => void;
+  onExitDrillTraining?: () => void;
+  showDrillCones?: boolean;
+  onToggleShowDrillCones?: () => void;
 }
 
 export const FieldBoard: React.FC<FieldBoardProps> = ({
@@ -59,6 +85,8 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
   showFullRoutes,
   showLabels,
   showZones,
+  showFieldGrid = false,
+  onToggleFieldGrid,
   selectedPlayerId,
   onSelectPlayer,
   fieldTheme,
@@ -74,13 +102,40 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
   onOpenCoachingModal,
   activeRouteConceptId,
   onSelectRouteConceptId,
+  onOpenFormationGallery,
   boardScale: controlledScale,
   onToggleBoardScale,
+  drillTrainingState,
+  onToggleDrillAutoLoop,
+  onIncrementDrillRep,
+  onDecrementDrillRep,
+  onResetDrillReps,
+  onChangeDrillTargetReps,
+  onChangeDrillCadenceDelay,
+  onExitDrillTraining,
+  showDrillCones = true,
+  onToggleShowDrillCones,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [internalScale, setInternalScale] = useState<'1.0x' | '1.5x' | 'theater'>('1.5x');
   const [showCoachingFieldHighlights, setShowCoachingFieldHighlights] = useState(true);
+
+  // Advanced Visual & Functional State
+  const [is3DAngle, setIs3DAngle] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [showGhostTrails, setShowGhostTrails] = useState(true);
+  const [audibleActive, setAudibleActive] = useState(false);
+  const [teamBranding, setTeamBranding] = useState(() => getTeamBranding());
+
+  useEffect(() => {
+    const handleBranding = (e: any) => {
+      if (e.detail) setTeamBranding(e.detail);
+      else setTeamBranding(getTeamBranding());
+    };
+    window.addEventListener('playbook_branding_updated', handleBranding);
+    return () => window.removeEventListener('playbook_branding_updated', handleBranding);
+  }, []);
 
   const currentScale = controlledScale || internalScale;
   const setScale = (scale: '1.0x' | '1.5x' | 'theater') => {
@@ -94,6 +149,20 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
     ROUTE_CONCEPTS_DATABASE.find((c) => c.id === activeRouteConceptId) ||
     matchedConcepts[0] ||
     ROUTE_CONCEPTS_DATABASE[0];
+
+  // Active timestamped coaching cue for on-field display
+  const currentSeconds = progress * 4.0;
+  const playCues = useMemo(() => getPlayCoachingCues(play), [play]);
+  const activeCoachingCue = useMemo(() => {
+    if (!playCues || playCues.length === 0) return null;
+    const matches = playCues.filter((c) => Math.abs(c.timeSeconds - currentSeconds) <= 0.35);
+    if (matches.length > 0) {
+      return matches.reduce((prev, curr) =>
+        Math.abs(curr.timeSeconds - currentSeconds) < Math.abs(prev.timeSeconds - currentSeconds) ? curr : prev
+      );
+    }
+    return null;
+  }, [playCues, currentSeconds]);
 
   // Synchronize fullscreen state with browser events and keydown (ESC)
   useEffect(() => {
@@ -271,6 +340,8 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
     switch (fieldTheme) {
       case 'turf':
         return 'bg-gradient-to-b from-[#14532d] via-[#166534] to-[#14532d]';
+      case 'stadium-night':
+        return 'bg-gradient-to-b from-[#021810] via-[#052b1b] to-[#01120b]';
       case 'chalkboard':
         return 'bg-gradient-to-b from-slate-800 via-slate-700 to-slate-800';
       case 'tactical':
@@ -283,6 +354,8 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
     switch (fieldTheme) {
       case 'turf':
         return 'stroke-emerald-200/50';
+      case 'stadium-night':
+        return 'stroke-emerald-300/70';
       case 'chalkboard':
         return 'stroke-slate-200/50';
       case 'tactical':
@@ -313,6 +386,16 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
   const fieldBoardContent = (
     <div
       className={`relative w-full max-w-full ${getContainerScaleClasses()} select-none transition-all duration-300 ${getThemeBg()}`}
+      style={
+        is3DAngle
+          ? {
+              transform: 'perspective(1100px) rotateX(22deg) scale(0.96) translateY(-8px)',
+              transformOrigin: 'bottom center',
+              transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)',
+            }
+          : { transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)' }
+      }
     >
       <svg
         id="fieldboard-svg-canvas"
@@ -405,6 +488,25 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
             <feGaussianBlur stdDeviation="1.5" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
+
+          {/* Route Heatmap Radial Gradients */}
+          <radialGradient id="heat-deep-middle" cx="50%" cy="40%" r="50%">
+            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.85" />
+            <stop offset="45%" stopColor="#f59e0b" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="heat-boundary-left" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="heat-boundary-right" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.8" />
+            <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="heat-flat-underneath" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.75" />
+            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+          </radialGradient>
         </defs>
 
         {/* Base Canvas Field Background for Export and Rendering */}
@@ -413,8 +515,58 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           y="0"
           width="100"
           height="100"
-          fill={fieldTheme === 'turf' ? '#14532d' : fieldTheme === 'chalkboard' ? '#1e293b' : '#0f172a'}
+          fill={
+            fieldTheme === 'turf'
+              ? '#14532d'
+              : fieldTheme === 'stadium-night'
+              ? '#031f13'
+              : fieldTheme === 'chalkboard'
+              ? '#1e293b'
+              : '#0f172a'
+          }
         />
+
+        {/* Dynamic Route Heatmap Overlay */}
+        {showHeatmap && (
+          <g id="route-heatmap-overlay" opacity="0.55" className="pointer-events-none transition-opacity duration-300">
+            <ellipse cx="50" cy="28" rx="38" ry="16" fill="url(#heat-deep-middle)" />
+            <ellipse cx="22" cy="40" rx="18" ry="14" fill="url(#heat-boundary-left)" />
+            <ellipse cx="78" cy="40" rx="18" ry="14" fill="url(#heat-boundary-right)" />
+            <ellipse cx="50" cy="55" rx="44" ry="9" fill="url(#heat-flat-underneath)" />
+          </g>
+        )}
+
+        {/* Defensive Coverage Zone Shadows */}
+        {showZones && defenseScheme && (
+          <g id="coverage-zone-shadows" opacity="0.22" className="pointer-events-none">
+            {defenseScheme.id === 'cover2' && (
+              <>
+                <rect x="2" y="12" width="47" height="34" fill="#3b82f6" rx="4" />
+                <rect x="51" y="12" width="47" height="34" fill="#3b82f6" rx="4" />
+                <ellipse cx="14" cy="55" rx="12" ry="7" fill="#10b981" />
+                <ellipse cx="38" cy="54" rx="11" ry="8" fill="#eab308" />
+                <ellipse cx="62" cy="54" rx="11" ry="8" fill="#eab308" />
+                <ellipse cx="86" cy="55" rx="12" ry="7" fill="#10b981" />
+              </>
+            )}
+            {defenseScheme.id === 'cover3' && (
+              <>
+                <rect x="2" y="12" width="31" height="35" fill="#8b5cf6" rx="4" />
+                <rect x="34.5" y="12" width="31" height="35" fill="#8b5cf6" rx="4" />
+                <rect x="67" y="12" width="31" height="35" fill="#8b5cf6" rx="4" />
+                <ellipse cx="15" cy="55" rx="13" ry="7" fill="#06b6d4" />
+                <ellipse cx="42" cy="55" rx="11" ry="7" fill="#eab308" />
+                <ellipse cx="58" cy="55" rx="11" ry="7" fill="#eab308" />
+                <ellipse cx="85" cy="55" rx="13" ry="7" fill="#06b6d4" />
+              </>
+            )}
+            {defenseScheme.id === 'cover1' && (
+              <>
+                <rect x="25" y="12" width="50" height="30" fill="#ec4899" rx="6" />
+              </>
+            )}
+          </g>
+        )}
 
         {/* ================= Field Markings ================= */}
         {/* Endzone */}
@@ -504,6 +656,18 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           </g>
         ))}
 
+        {/* Aalto Predators Midfield Watermark Crest */}
+        <image
+          href="/aalto-predators-logo.svg"
+          x="42"
+          y="32"
+          width="16"
+          height="16"
+          opacity="0.18"
+          preserveAspectRatio="xMidYMid meet"
+          className="pointer-events-none select-none"
+        />
+
         {/* College / Pro Hash Marks */}
         {Array.from({ length: 30 }).map((_, i) => {
           const yPos = 14 + i * 2.8;
@@ -562,6 +726,125 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           1st Down (Line to Gain)
         </text>
 
+        {/* ================= 5-YARD FIELD GRID & HASHMARK OVERLAY ================= */}
+        {showFieldGrid && (
+          <g id="five-yard-field-grid-overlay" className="pointer-events-none select-none transition-opacity duration-300">
+            {/* 5-Yard Horizontal Lines from Goal Line (y=12) to Deep Backfield (y=91.5) */}
+            {[
+              { y: 12.0, relYards: '+50 YD', isMajor: true },
+              { y: 17.3, relYards: '+45 YD', isMajor: false },
+              { y: 22.6, relYards: '+40 YD', isMajor: true },
+              { y: 27.9, relYards: '+35 YD', isMajor: false },
+              { y: 33.2, relYards: '+30 YD', isMajor: true },
+              { y: 38.5, relYards: '+25 YD', isMajor: false },
+              { y: 43.8, relYards: '+20 YD', isMajor: true },
+              { y: 49.1, relYards: '+15 YD', isMajor: false },
+              { y: 54.4, relYards: '+10 YD', isMajor: true },
+              { y: 59.7, relYards: '+5 YD', isMajor: false },
+              { y: 65.0, relYards: 'LOS (0)', isMajor: true },
+              { y: 70.3, relYards: '-5 YD', isMajor: false },
+              { y: 75.6, relYards: '-10 YD', isMajor: true },
+              { y: 80.9, relYards: '-15 YD', isMajor: false },
+              { y: 86.2, relYards: '-20 YD', isMajor: true },
+              { y: 91.5, relYards: '-25 YD', isMajor: false },
+            ].map((gLine, i) => (
+              <g key={`grid-h-line-${i}`}>
+                {/* 5-Yard Line Spanning Field */}
+                <line
+                  x1="0"
+                  y1={gLine.y}
+                  x2="100"
+                  y2={gLine.y}
+                  stroke={gLine.y === 65 ? '#38bdf8' : gLine.isMajor ? 'rgba(56, 189, 248, 0.55)' : 'rgba(56, 189, 248, 0.28)'}
+                  strokeWidth={gLine.y === 65 ? '0.7' : gLine.isMajor ? '0.35' : '0.22'}
+                  strokeDasharray={gLine.y === 65 ? undefined : gLine.isMajor ? '2, 1.5' : '0.8, 1.2'}
+                />
+
+                {/* 5-Yard Alignment Crosshairs (+) at key tactical columns */}
+                {[10, 20, 30, 38, 50, 62, 70, 80, 90].map((cx) => (
+                  <g key={`cross-${i}-${cx}`} opacity="0.65">
+                    <line x1={cx - 0.75} y1={gLine.y} x2={cx + 0.75} y2={gLine.y} stroke="#38bdf8" strokeWidth="0.32" />
+                    <line x1={cx} y1={gLine.y - 0.75} x2={cx} y2={gLine.y + 0.75} stroke="#38bdf8" strokeWidth="0.32" />
+                  </g>
+                ))}
+
+                {/* Relative Yardage Depth Badges on Left and Right boundary */}
+                {gLine.y !== 65 && gLine.y > 13 && (
+                  <>
+                    <text
+                      x="2"
+                      y={gLine.y + 0.8}
+                      fontSize="1.6"
+                      fontWeight="bold"
+                      fill={gLine.isMajor ? '#38bdf8' : 'rgba(56, 189, 248, 0.7)'}
+                      textAnchor="start"
+                      className="font-mono"
+                    >
+                      {gLine.relYards}
+                    </text>
+                    <text
+                      x="98"
+                      y={gLine.y + 0.8}
+                      fontSize="1.6"
+                      fontWeight="bold"
+                      fill={gLine.isMajor ? '#38bdf8' : 'rgba(56, 189, 248, 0.7)'}
+                      textAnchor="end"
+                      className="font-mono"
+                    >
+                      {gLine.relYards}
+                    </text>
+                  </>
+                )}
+              </g>
+            ))}
+
+            {/* Vertical Formation & Spacing Grid Lines */}
+            {[
+              { x: 10, label: 'L BND' },
+              { x: 20, label: 'L NUM' },
+              { x: 30, label: 'L SLOT' },
+              { x: 38, label: 'L HASH', isHash: true },
+              { x: 50, label: 'CENTER', isCenter: true },
+              { x: 62, label: 'R HASH', isHash: true },
+              { x: 70, label: 'R SLOT' },
+              { x: 80, label: 'R NUM' },
+              { x: 90, label: 'R BND' },
+            ].map((vLine, i) => (
+              <g key={`grid-v-line-${i}`}>
+                <line
+                  x1={vLine.x}
+                  y1="12"
+                  x2={vLine.x}
+                  y2="95.5"
+                  stroke={vLine.isCenter ? 'rgba(56, 189, 248, 0.45)' : vLine.isHash ? 'rgba(56, 189, 248, 0.35)' : 'rgba(56, 189, 248, 0.18)'}
+                  strokeWidth={vLine.isCenter ? '0.4' : '0.24'}
+                  strokeDasharray={vLine.isCenter ? '2, 2' : '1, 2'}
+                />
+                <text
+                  x={vLine.x}
+                  y="97.2"
+                  fontSize="1.35"
+                  fontWeight="bold"
+                  fill="rgba(56, 189, 248, 0.75)"
+                  textAnchor="middle"
+                  className="font-mono"
+                >
+                  {vLine.label}
+                </text>
+              </g>
+            ))}
+
+            {/* Tactical Grid Status Indicator HUD Pill */}
+            <g transform="translate(3, 14)">
+              <rect x="0" y="0" width="35" height="4.5" rx="1.2" fill="rgba(15, 23, 42, 0.88)" stroke="#0284c7" strokeWidth="0.3" />
+              <circle cx="2.5" cy="2.25" r="0.8" fill="#38bdf8" />
+              <text x="4.4" y="2.9" fontSize="1.7" fontWeight="bold" fill="#38bdf8" className="font-mono">
+                5-YD SPACING GRID ACTIVE
+              </text>
+            </g>
+          </g>
+        )}
+
         {/* ================= Defensive Zones & Coverage Overlay ================= */}
         {showDefense && defenseScheme && (
           <g id="defensive-scheme-overlay">
@@ -599,13 +882,15 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
                   );
                 })}
 
-            {/* Man Coverage Tether Lines */}
+            {/* Man / Match / Bracket Coverage Tether Lines */}
             {defenseScheme.players
-              .filter((p) => p.coverageType === 'man' && p.targetOffensivePlayerId)
+              .filter((p) => (p.coverageType === 'man' || p.coverageType === 'match' || p.coverageType === 'bracket') && p.targetOffensivePlayerId)
               .map((defPlayer) => {
                 const offPlayer = play.players[defPlayer.targetOffensivePlayerId!];
                 if (!offPlayer) return null;
                 const offPos = getPlayerCurrentPosition(defPlayer.targetOffensivePlayerId!);
+                const isBracket = defPlayer.coverageType === 'bracket';
+                const isMatch = defPlayer.coverageType === 'match';
                 return (
                   <line
                     key={`tether-${defPlayer.id}`}
@@ -613,16 +898,16 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
                     y1={defPlayer.initialPos.y}
                     x2={offPos.x}
                     y2={offPos.y}
-                    stroke="rgba(244, 63, 94, 0.25)"
-                    strokeWidth="0.4"
-                    strokeDasharray="1,1"
+                    stroke={isBracket ? 'rgba(234, 88, 12, 0.4)' : isMatch ? 'rgba(168, 85, 247, 0.35)' : 'rgba(244, 63, 94, 0.25)'}
+                    strokeWidth={isBracket ? '0.6' : '0.4'}
+                    strokeDasharray={isBracket ? '2,1.5' : isMatch ? '2,2' : '1,1'}
                   />
                 );
               })}
 
             {/* Defensive Player Tokens */}
             {defenseScheme.players.map((defPlayer) => {
-              // Calculate slight reaction towards ball or assignment
+              // Calculate reaction towards ball, zone drop, or receiver assignment
               let defX = defPlayer.initialPos.x;
               let defY = defPlayer.initialPos.y;
 
@@ -631,6 +916,18 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
                 if (defPlayer.coverageType === 'blitz') {
                   defY = defPlayer.initialPos.y + (75 - defPlayer.initialPos.y) * reactProgress * 0.7;
                   defX = defPlayer.initialPos.x + (50 - defPlayer.initialPos.x) * reactProgress * 0.7;
+                } else if (defPlayer.coverageType === 'bracket' && defPlayer.targetOffensivePlayerId && play.players[defPlayer.targetOffensivePlayerId]) {
+                  const offPos = getPlayerCurrentPosition(defPlayer.targetOffensivePlayerId);
+                  // Underneath vs over-top leverage positioning
+                  const isHighSafety = defPlayer.initialPos.y < 40;
+                  const yOffset = isHighSafety ? -6 : -2;
+                  const xOffset = isHighSafety ? 1.5 : -1.5;
+                  defX = defPlayer.initialPos.x + (offPos.x + xOffset - defPlayer.initialPos.x) * reactProgress * 0.75;
+                  defY = defPlayer.initialPos.y + (offPos.y + yOffset - defPlayer.initialPos.y) * reactProgress * 0.75;
+                } else if (defPlayer.coverageType === 'match' && defPlayer.targetOffensivePlayerId && play.players[defPlayer.targetOffensivePlayerId]) {
+                  const offPos = getPlayerCurrentPosition(defPlayer.targetOffensivePlayerId);
+                  defX = defPlayer.initialPos.x + (offPos.x - defPlayer.initialPos.x) * reactProgress * 0.65;
+                  defY = defPlayer.initialPos.y + (offPos.y - 3.5 - defPlayer.initialPos.y) * reactProgress * 0.65;
                 } else if (defPlayer.targetOffensivePlayerId && play.players[defPlayer.targetOffensivePlayerId]) {
                   const offPos = getPlayerCurrentPosition(defPlayer.targetOffensivePlayerId);
                   defX = defPlayer.initialPos.x + (offPos.x - defPlayer.initialPos.x) * reactProgress * 0.6;
@@ -641,16 +938,25 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
               }
 
               return (
-                <g key={`def-${defPlayer.id}`}>
+                <g key={`def-${defPlayer.id}`} className="touch-manipulation">
+                  {/* Invisible Enlarged Hit Target Area (r=5.5 for touch-friendliness) */}
+                  <circle
+                    cx={defX}
+                    cy={defY}
+                    r="5.5"
+                    fill="transparent"
+                    stroke="none"
+                    style={{ pointerEvents: 'all' }}
+                  />
                   {/* Defender Circle */}
                   <circle
                     cx={defX}
                     cy={defY}
-                    r="2.3"
+                    r="2.4"
                     fill="#be123c"
                     stroke="#fda4af"
-                    strokeWidth="0.5"
-                    className="transition-all duration-75"
+                    strokeWidth="0.55"
+                    className="transition-all duration-75 pointer-events-none"
                   />
                   <text
                     x={defX}
@@ -659,7 +965,7 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
                     fontSize="1.9"
                     fontWeight="bold"
                     fill="#ffffff"
-                    className="font-mono select-none"
+                    className="font-mono select-none pointer-events-none"
                   >
                     {defPlayer.label}
                   </text>
@@ -922,6 +1228,148 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           </g>
         )}
 
+        {/* ================= Player Motion Ghosting Trails ================= */}
+        {showGhostTrails && isPlaying && progress > 0.06 && (
+          <g id="motion-ghost-trails" className="pointer-events-none">
+            {(Object.entries(play.players) as [string, PlayerAssignment][]).map(([key, player]) => {
+              if (key === 'C') return null;
+              const cur = getPlayerCurrentPosition(key);
+              const t1 = {
+                x: cur.x + (player.initialPos.x - cur.x) * 0.22,
+                y: cur.y + (player.initialPos.y - cur.y) * 0.22,
+              };
+              const t2 = {
+                x: cur.x + (player.initialPos.x - cur.x) * 0.44,
+                y: cur.y + (player.initialPos.y - cur.y) * 0.44,
+              };
+
+              return (
+                <g key={`ghost-trail-${key}`}>
+                  <circle
+                    cx={t1.x}
+                    cy={t1.y}
+                    r="2.2"
+                    fill={teamBranding?.primaryJerseyColor || '#38bdf8'}
+                    opacity="0.35"
+                  />
+                  <circle
+                    cx={t2.x}
+                    cy={t2.y}
+                    r="1.6"
+                    fill={teamBranding?.secondaryJerseyColor || '#94a3b8'}
+                    opacity="0.2"
+                  />
+                </g>
+              );
+            })}
+          </g>
+        )}
+
+        {/* ================= Drill Field Cones & Agility Markers ================= */}
+        {showDrillCones && play.drillData?.cones && play.drillData.cones.length > 0 && (
+          <g id="drill-field-cones-layer" className="pointer-events-none select-none">
+            {play.drillData.cones.map((cone: DrillCone) => {
+              const coneColor = cone.color || '#f97316';
+              const isShield = cone.type === 'shield';
+
+              return (
+                <g key={cone.id} id={`drill-cone-${cone.id}`} className="transition-all">
+                  {isShield ? (
+                    // Contact / Shield Dummy marker
+                    <g transform={`translate(${cone.x}, ${cone.y})`}>
+                      <ellipse cx="0" cy="1.6" rx="2.4" ry="1.0" fill="rgba(0,0,0,0.4)" />
+                      <rect
+                        x="-2.2"
+                        y="-3.4"
+                        width="4.4"
+                        height="4.6"
+                        rx="1.2"
+                        fill={coneColor}
+                        stroke="#991b1b"
+                        strokeWidth="0.4"
+                      />
+                      <path
+                        d="M -1.2 -1.8 L 1.2 -1.8 M 0 -2.6 L 0 -0.8"
+                        stroke="#ffffff"
+                        strokeWidth="0.5"
+                        strokeLinecap="round"
+                      />
+                      <g transform="translate(0, 3.2)">
+                        <rect
+                          x={-Math.max(10, cone.label.length * 1.0) / 2}
+                          y="-1.6"
+                          width={Math.max(10, cone.label.length * 1.0)}
+                          height="2.5"
+                          rx="0.8"
+                          fill="rgba(15, 23, 42, 0.9)"
+                          stroke="#ef4444"
+                          strokeWidth="0.3"
+                        />
+                        <text
+                          x="0"
+                          y="0.1"
+                          textAnchor="middle"
+                          fontSize="1.5"
+                          fontWeight="bold"
+                          fill="#fecaca"
+                        >
+                          {cone.label}
+                        </text>
+                      </g>
+                    </g>
+                  ) : (
+                    // Athletic Agility Pylon / Field Cone
+                    <g transform={`translate(${cone.x}, ${cone.y})`}>
+                      {/* Ground drop shadow */}
+                      <ellipse cx="0" cy="1.2" rx="2.5" ry="0.8" fill="rgba(0,0,0,0.45)" />
+                      {/* Square Cone Base Plate */}
+                      <path d="M -2.2 0.7 L 2.2 0.7 L 1.7 1.4 L -1.7 1.4 Z" fill="#c2410c" />
+                      {/* Cone Body (Pylon Cone) */}
+                      <polygon
+                        points="0,-4.2 -2.0,0.7 2.0,0.7"
+                        fill={coneColor}
+                        stroke="#9a3412"
+                        strokeWidth="0.3"
+                      />
+                      {/* Reflective White Collar Stripe */}
+                      <polygon
+                        points="0,-2.2 -1.1,-0.3 1.1,-0.3"
+                        fill="#ffffff"
+                        opacity="0.85"
+                      />
+                      {/* Top Tip */}
+                      <circle cx="0" cy="-4.2" r="0.4" fill="#ffedd5" />
+                      {/* Cone Yardage / Step Label Pill */}
+                      <g transform="translate(0, 3.8)">
+                        <rect
+                          x={-Math.max(12, cone.label.length * 1.05) / 2}
+                          y="-1.8"
+                          width={Math.max(12, cone.label.length * 1.05)}
+                          height="2.8"
+                          rx="1.0"
+                          fill="rgba(15, 23, 42, 0.88)"
+                          stroke={coneColor}
+                          strokeWidth="0.3"
+                        />
+                        <text
+                          x="0"
+                          y="0.1"
+                          textAnchor="middle"
+                          fontSize="1.6"
+                          fontWeight="bold"
+                          fill="#ffffff"
+                        >
+                          {cone.label}
+                        </text>
+                      </g>
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+          </g>
+        )}
+
         {/* ================= Offensive Player Tokens ================= */}
         {(Object.entries(play.players) as [string, PlayerAssignment][]).map(([key, player]) => {
           const currentPos = getPlayerCurrentPosition(key);
@@ -967,7 +1415,7 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           // Color token based on position or custom player avatar color
           let tokenBg = rosterPlayer?.avatarColor || '#1e293b';
           let tokenBorder = '#94a3b8';
-          let textColor = '#ffffff';
+          let textColor = teamBranding?.numberTextColor || '#ffffff';
 
           if (key === 'QB') {
             tokenBg = rosterPlayer?.avatarColor || '#dc2626'; // Red for QB
@@ -988,8 +1436,8 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
             tokenBg = rosterPlayer?.avatarColor || '#7c3aed'; // Purple for Backs
             tokenBorder = '#c4b5fd';
           } else {
-            tokenBg = rosterPlayer?.avatarColor || '#0f172a';
-            tokenBorder = '#38bdf8';
+            tokenBg = rosterPlayer?.avatarColor || teamBranding?.primaryJerseyColor || '#0f172a';
+            tokenBorder = teamBranding?.secondaryJerseyColor || '#38bdf8';
           }
 
           if (isSelected) {
@@ -999,18 +1447,32 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           return (
             <g
               key={`player-token-${key}`}
-              className="cursor-pointer group"
+              className="cursor-pointer group touch-manipulation"
               onClick={() => onSelectPlayer?.(isSelected ? null : key)}
+              role="button"
+              tabIndex={0}
+              aria-label={`Select player ${key}`}
             >
+              {/* Invisible Enlarged Touch Hit Target Area (r=6.5 in 100x100 space, giving 48px+ touch hit box) */}
+              <circle
+                cx={currentPos.x}
+                cy={currentPos.y}
+                r="6.5"
+                fill="transparent"
+                stroke="none"
+                style={{ pointerEvents: 'all' }}
+                className="cursor-pointer"
+              />
+
               {/* Highlight Aura if Selected or Primary */}
               {(isSelected || isPrimary || isBallCarrier) && (
                 <circle
                   cx={currentPos.x}
                   cy={currentPos.y}
-                  r="4.2"
+                  r="4.4"
                   fill={isSelected ? '#facc15' : (isBallCarrier ? '#ef4444' : '#38bdf8')}
                   opacity="0.3"
-                  className="animate-pulse"
+                  className="animate-pulse pointer-events-none"
                 />
               )}
 
@@ -1022,7 +1484,7 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
                 fill={tokenBg}
                 stroke={tokenBorder}
                 strokeWidth={isSelected ? '0.9' : '0.6'}
-                className="transition-all duration-75 group-hover:scale-110"
+                className="transition-all duration-75 group-hover:scale-110 group-active:scale-95 pointer-events-none"
               />
 
               {/* Player Position / Jersey # Label Text */}
@@ -1073,22 +1535,38 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
       </svg>
 
       {/* Field HUD Overlay: Formation info & strength */}
-      <div className="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/70 rounded-xl px-3.5 py-2 shadow-xl flex items-center gap-2.5 pointer-events-none z-20">
-        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
-        <div className="text-xs sm:text-sm">
-          <span className="font-bold text-slate-100">{play.formationName}</span>
-          <span className="mx-1.5 text-slate-500">•</span>
-          <span className="text-amber-400 font-mono font-bold">{play.playType}</span>
+      {onOpenFormationGallery ? (
+        <button
+          id="fieldboard-formation-hud-btn"
+          onClick={onOpenFormationGallery}
+          title={`Formation: ${play.formationName} (${play.playType}) - Click to open Formation Gallery`}
+          className="absolute top-3 left-3 bg-slate-900/90 hover:bg-slate-800/95 active:scale-95 backdrop-blur-md border border-slate-700/70 hover:border-cyan-500/60 rounded-xl px-3.5 py-2 shadow-xl flex items-center gap-2.5 z-20 transition-all cursor-pointer group text-left touch-manipulation"
+        >
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+          <div className="text-xs sm:text-sm flex items-center">
+            <span className="font-bold text-slate-100 group-hover:text-cyan-300 transition-colors">{play.formationName}</span>
+            <span className="mx-1.5 text-slate-500">•</span>
+            <span className="text-amber-400 font-mono font-bold">{play.playType}</span>
+          </div>
+        </button>
+      ) : (
+        <div className="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/70 rounded-xl px-3.5 py-2 shadow-xl flex items-center gap-2.5 pointer-events-none z-20">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+          <div className="text-xs sm:text-sm">
+            <span className="font-bold text-slate-100">{play.formationName}</span>
+            <span className="mx-1.5 text-slate-500">•</span>
+            <span className="text-amber-400 font-mono font-bold">{play.playType}</span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Fullscreen, Whiteboard, Roster, Scale & Coaching Mode Toggle Buttons (Top Right) */}
       <div className="absolute top-3 right-3 z-30 flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
         {/* Scale Selector Pill */}
-        <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700/70 rounded-xl p-0.5 shadow-lg flex items-center text-[11px] font-mono font-bold">
+        <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700/70 rounded-xl p-1 shadow-lg flex items-center text-[11px] font-mono font-bold touch-manipulation">
           <button
             onClick={() => setScale('1.0x')}
-            className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${
+            className={`min-h-[34px] px-2.5 py-1 rounded-lg transition-all cursor-pointer touch-manipulation active:scale-95 ${
               currentScale === '1.0x'
                 ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-slate-400 hover:text-slate-200'
@@ -1099,7 +1577,7 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           </button>
           <button
             onClick={() => setScale('1.5x')}
-            className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${
+            className={`min-h-[34px] px-2.5 py-1 rounded-lg transition-all cursor-pointer touch-manipulation active:scale-95 ${
               currentScale === '1.5x'
                 ? 'bg-emerald-600 text-white shadow-xs'
                 : 'text-slate-400 hover:text-slate-200'
@@ -1110,7 +1588,7 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           </button>
           <button
             onClick={() => setScale('theater')}
-            className={`px-2 py-1 rounded-lg transition-all cursor-pointer hidden md:inline-flex items-center gap-1 ${
+            className={`min-h-[34px] px-2.5 py-1 rounded-lg transition-all cursor-pointer hidden md:inline-flex items-center gap-1 touch-manipulation active:scale-95 ${
               currentScale === 'theater'
                 ? 'bg-purple-600 text-white shadow-xs'
                 : 'text-slate-400 hover:text-slate-200'
@@ -1122,12 +1600,74 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           </button>
         </div>
 
+        {/* 3D Perspective Toggle Button */}
+        <button
+          id="fieldboard-3d-toggle-btn"
+          onClick={() => setIs3DAngle(!is3DAngle)}
+          title={is3DAngle ? 'Switch to Top-Down 2D View' : 'Switch to 2.5D Stadium Perspective Angle'}
+          className={`backdrop-blur-md min-h-[36px] px-2.5 py-1.5 rounded-xl shadow-lg flex items-center gap-1 text-xs font-bold transition-all active:scale-95 border cursor-pointer touch-manipulation ${
+            is3DAngle
+              ? 'bg-indigo-600 text-white border-indigo-400 shadow-indigo-950/40'
+              : 'bg-slate-900/85 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700/60 shadow-slate-950/40'
+          }`}
+        >
+          <Compass className="w-3.5 h-3.5 text-indigo-400" />
+          <span className="hidden sm:inline">3D</span>
+        </button>
+
+        {/* 5-Yard Spacing Grid Overlay Toggle Button */}
+        {onToggleFieldGrid && (
+          <button
+            id="fieldboard-grid-toggle-btn"
+            onClick={onToggleFieldGrid}
+            title={showFieldGrid ? 'Hide 5-Yard Hashmark Field Grid' : 'Show 5-Yard Hashmark Field Grid for precise spacing'}
+            className={`backdrop-blur-md min-h-[36px] px-2.5 py-1.5 rounded-xl shadow-lg flex items-center gap-1 text-xs font-bold transition-all active:scale-95 border cursor-pointer touch-manipulation ${
+              showFieldGrid
+                ? 'bg-cyan-600 text-white border-cyan-400 shadow-cyan-950/40'
+                : 'bg-slate-900/85 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700/60 shadow-slate-950/40'
+            }`}
+          >
+            <Grid className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">Grid</span>
+          </button>
+        )}
+
+        {/* Heatmap Overlay Toggle Button */}
+        <button
+          id="fieldboard-heatmap-toggle-btn"
+          onClick={() => setShowHeatmap(!showHeatmap)}
+          title="Toggle Target Route Heatmap Density Overlay"
+          className={`backdrop-blur-md min-h-[36px] px-2.5 py-1.5 rounded-xl shadow-lg flex items-center gap-1 text-xs font-bold transition-all active:scale-95 border cursor-pointer touch-manipulation ${
+            showHeatmap
+              ? 'bg-amber-600 text-white border-amber-400 shadow-amber-950/40'
+              : 'bg-slate-900/85 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700/60 shadow-slate-950/40'
+          }`}
+        >
+          <Flame className="w-3.5 h-3.5 text-amber-400" />
+          <span className="hidden sm:inline">Heatmap</span>
+        </button>
+
+        {/* Audible / Cadence Trigger Button */}
+        <button
+          id="fieldboard-audible-toggle-btn"
+          onClick={() => setAudibleActive(!audibleActive)}
+          title="Call Live Audible at the Line of Scrimmage"
+          className={`backdrop-blur-md min-h-[36px] px-2.5 py-1.5 rounded-xl shadow-lg flex items-center gap-1 text-xs font-bold transition-all active:scale-95 border cursor-pointer touch-manipulation ${
+            audibleActive
+              ? 'bg-rose-600 text-white border-rose-400 shadow-rose-950/40 animate-pulse'
+              : 'bg-slate-900/85 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700/60 shadow-slate-950/40'
+          }`}
+        >
+          <Volume2 className="w-3.5 h-3.5 text-rose-400" />
+          <span className="hidden sm:inline">Audible</span>
+        </button>
+
         {onToggleCoachingOverlay && (
           <button
             id="fieldboard-coaching-tips-btn"
             onClick={() => onToggleCoachingOverlay(!isCoachingOverlayOpen)}
             title="Toggle Video Tutorial HUD & Coaching Tips Overlay on Field"
-            className={`backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 border cursor-pointer ${
+            className={`backdrop-blur-md min-h-[36px] px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 border cursor-pointer touch-manipulation ${
               isCoachingOverlayOpen
                 ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 border-amber-300 shadow-amber-950/40'
                 : 'bg-slate-900/85 hover:bg-slate-800 text-amber-300 hover:text-amber-200 border-amber-500/50 shadow-slate-950/40'
@@ -1146,7 +1686,7 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
             id="fieldboard-open-roster-btn"
             onClick={onOpenRoster}
             title="Open Roster & Jersey Numbers Management"
-            className="backdrop-blur-md px-2.5 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 border bg-blue-600/90 hover:bg-blue-600 text-white border-blue-400/50 shadow-blue-950/40 cursor-pointer"
+            className="backdrop-blur-md min-h-[36px] px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 border bg-blue-600/90 hover:bg-blue-600 text-white border-blue-400/50 shadow-blue-950/40 cursor-pointer touch-manipulation"
           >
             <Users className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Roster (#{tokenDisplayMode.toUpperCase()})</span>
@@ -1158,7 +1698,7 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
             id="fieldboard-draw-whiteboard-btn"
             onClick={onOpenWhiteboard}
             title="Draw Play on Tactical Whiteboard (Tablet / Touch Pen Mode)"
-            className="backdrop-blur-md px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 border bg-emerald-600/90 hover:bg-emerald-600 text-white border-emerald-400/50 shadow-emerald-950/40 cursor-pointer"
+            className="backdrop-blur-md min-h-[36px] px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 border bg-emerald-600/90 hover:bg-emerald-600 text-white border-emerald-400/50 shadow-emerald-950/40 cursor-pointer touch-manipulation"
           >
             <PenTool className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Whiteboard</span>
@@ -1169,7 +1709,7 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           id="fieldboard-fullscreen-toggle-btn"
           onClick={toggleFullscreen}
           title={isFullscreen ? 'Exit Full Screen (ESC)' : 'Full Screen'}
-          className={`backdrop-blur-md px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 border cursor-pointer ${
+          className={`backdrop-blur-md min-h-[36px] px-3 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 border cursor-pointer touch-manipulation ${
             isFullscreen
               ? 'bg-red-600/90 hover:bg-red-600 text-white border-red-400/50 shadow-red-600/30'
               : 'bg-slate-900/85 hover:bg-slate-800 text-slate-200 hover:text-white border-slate-700/60 hover:border-slate-500 shadow-slate-950/40'
@@ -1188,6 +1728,39 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           )}
         </button>
       </div>
+
+      {/* Floating QB Drop / Release Stopwatch Overlay */}
+      {(isPlaying || progress > 0) && (
+        <div className="absolute top-14 right-3 bg-slate-900/90 backdrop-blur-md border border-slate-700/70 rounded-xl px-2.5 py-1 shadow-lg flex items-center gap-1.5 text-xs font-mono font-bold z-20 pointer-events-none">
+          <Timer className="w-3.5 h-3.5 text-sky-400 animate-pulse" />
+          <span className="text-slate-400 text-[10px]">QB TIME:</span>
+          <span
+            className={`${
+              progress * 3.5 <= 2.2
+                ? 'text-emerald-400'
+                : progress * 3.5 <= 3.0
+                ? 'text-amber-400'
+                : 'text-rose-400'
+            }`}
+          >
+            {(progress * 3.5).toFixed(1)}s
+          </span>
+        </div>
+      )}
+
+      {/* Audible Alert Banner */}
+      {audibleActive && (
+        <div className="absolute top-14 left-1/2 -translate-x-1/2 bg-rose-600/95 backdrop-blur-md border border-rose-300/80 rounded-full px-4 py-1.5 shadow-2xl flex items-center gap-2 text-white font-mono font-bold text-xs animate-bounce z-30">
+          <Volume2 className="w-4 h-4 text-amber-300" />
+          <span>AUDIBLE CALLED: &quot;KILL! KILL! CHECK SLANT!&quot;</span>
+          <button
+            onClick={() => setAudibleActive(false)}
+            className="ml-2 text-rose-200 hover:text-white cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Selected Player Detail Badge (Bottom Center) */}
       {selectedPlayerId && play.players[selectedPlayerId] && (
@@ -1229,6 +1802,212 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
         })()
       )}
 
+      {/* ================= Drill Repeat Training Bar & Auto-Loop HUD ================= */}
+      {drillTrainingState && (
+        <div
+          id="fieldboard-drill-training-bar"
+          className="absolute top-14 left-3 right-3 sm:left-4 sm:right-auto sm:max-w-2xl bg-slate-950/95 backdrop-blur-xl border-2 border-emerald-500/80 rounded-2xl p-3 shadow-2xl z-30 space-y-2 animate-in fade-in slide-in-from-top-2 duration-200"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* Drill Title & Badge */}
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
+                <Repeat
+                  className={`w-3 h-3 text-emerald-400 ${isPlaying ? 'animate-spin' : ''}`}
+                  style={{ animationDuration: '6s' }}
+                />
+                Drill Reps
+              </span>
+              <h4
+                className="text-xs font-bold text-white truncate max-w-[200px] sm:max-w-xs"
+                title={drillTrainingState.drillName}
+              >
+                {drillTrainingState.drillName}
+              </h4>
+            </div>
+
+            {/* Action Buttons: Exit & Cones */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {onToggleShowDrillCones && (
+                <button
+                  onClick={onToggleShowDrillCones}
+                  className={`px-2 py-1 rounded-lg text-[11px] font-mono font-bold flex items-center gap-1 border transition-all cursor-pointer ${
+                    showDrillCones
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      : 'bg-slate-800 text-slate-400 border-slate-700'
+                  }`}
+                  title="Toggle Agility Cones on Field"
+                >
+                  <span>Cones</span>
+                  <span className="text-[10px]">{showDrillCones ? 'ON' : 'OFF'}</span>
+                </button>
+              )}
+
+              {onExitDrillTraining && (
+                <button
+                  onClick={onExitDrillTraining}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-slate-800 hover:bg-rose-950/80 hover:text-rose-300 text-slate-300 border border-slate-700 transition-all flex items-center gap-1 cursor-pointer"
+                  title="Exit Drill and return to Playbook"
+                >
+                  <span>✕ Exit Drill</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Drill Rep Controls & Auto-Loop Toggles */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80">
+            {/* Rep Stepper Counter */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-[11px] font-mono text-slate-400 font-bold">REPS:</span>
+              <div className="flex items-center bg-slate-900 border border-slate-700 rounded-xl overflow-hidden p-0.5">
+                <button
+                  onClick={onDecrementDrillRep}
+                  disabled={drillTrainingState.currentRep <= 1}
+                  className="px-2 py-0.5 text-xs font-bold text-slate-300 hover:text-white disabled:opacity-30 cursor-pointer"
+                  title="Previous Rep"
+                >
+                  -
+                </button>
+                <div className="px-2 py-0.5 bg-emerald-950/80 text-emerald-300 font-mono font-black text-xs min-w-[56px] text-center border-x border-slate-800">
+                  {drillTrainingState.currentRep} /{' '}
+                  {drillTrainingState.targetReps > 0 ? drillTrainingState.targetReps : '∞'}
+                </div>
+                <button
+                  onClick={onIncrementDrillRep}
+                  className="px-2 py-0.5 text-xs font-bold text-slate-300 hover:text-white cursor-pointer"
+                  title="Next Rep"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Rep Dots preview */}
+              {drillTrainingState.targetReps > 0 && drillTrainingState.targetReps <= 12 && (
+                <div className="hidden sm:flex items-center gap-1 ml-1">
+                  {Array.from({ length: drillTrainingState.targetReps }).map((_, idx) => (
+                    <div
+                      key={`rep-dot-${idx}`}
+                      className={`w-2 h-2 rounded-full transition-all ${
+                        idx < drillTrainingState.currentRep
+                          ? 'bg-emerald-400 shadow-xs shadow-emerald-400/50'
+                          : 'bg-slate-800 border border-slate-700'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {onResetDrillReps && (
+                <button
+                  onClick={onResetDrillReps}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 cursor-pointer"
+                  title="Reset Reps to 1"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Auto-Loop Toggle and Cadence selector */}
+            <div className="flex items-center gap-2">
+              {onToggleDrillAutoLoop && (
+                <button
+                  onClick={onToggleDrillAutoLoop}
+                  className={`px-3 py-1 rounded-xl text-xs font-bold font-mono flex items-center gap-1.5 transition-all shadow-xs cursor-pointer ${
+                    drillTrainingState.isAutoLoop
+                      ? 'bg-emerald-500 text-slate-950 font-black shadow-emerald-500/30 ring-1 ring-emerald-400'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-slate-200'
+                  }`}
+                >
+                  <Repeat
+                    className={`w-3.5 h-3.5 ${drillTrainingState.isAutoLoop && isPlaying ? 'animate-spin' : ''}`}
+                    style={{ animationDuration: '4s' }}
+                  />
+                  <span>Auto-Loop: {drillTrainingState.isAutoLoop ? 'ON' : 'OFF'}</span>
+                </button>
+              )}
+
+              {/* Cadence Delay quick picker */}
+              {onChangeDrillCadenceDelay && (
+                <select
+                  value={drillTrainingState.cadenceDelayMs}
+                  onChange={(e) => onChangeDrillCadenceDelay(Number(e.target.value))}
+                  className="bg-slate-900 border border-slate-700 text-[11px] font-mono text-slate-300 rounded-lg px-2 py-1 outline-hidden cursor-pointer"
+                  title="Cadence reset delay between reps"
+                >
+                  <option value={500}>Cadence: 0.5s</option>
+                  <option value={1000}>Cadence: 1.0s</option>
+                  <option value={1500}>Cadence: 1.5s</option>
+                  <option value={2000}>Cadence: 2.0s</option>
+                </select>
+              )}
+            </div>
+          </div>
+
+          {/* Coaching Key Ticker */}
+          {drillTrainingState.coachingCue && (
+            <div className="text-[11px] text-amber-300 bg-amber-950/40 border border-amber-500/30 rounded-xl px-2.5 py-1 flex items-center gap-1.5 leading-snug">
+              <span className="font-mono font-bold text-amber-400 uppercase text-[10px] shrink-0">
+                Key:
+              </span>
+              <span className="truncate">{drillTrainingState.coachingCue}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Auto-Loop Resetting Cadence Alert Banner */}
+      {drillTrainingState?.isResettingRep && (
+        <div className="absolute top-28 left-1/2 -translate-x-1/2 bg-slate-950/95 border-2 border-emerald-400 rounded-2xl px-5 py-2.5 shadow-2xl flex items-center gap-3 text-emerald-300 font-mono font-bold text-xs z-30 animate-pulse pointer-events-none">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+          <span>RESETTING TO LOS... &quot;DOWN, SET, HUT!&quot;</span>
+          <span className="px-2 py-0.5 rounded-md bg-emerald-950 text-emerald-400 border border-emerald-500/40">
+            Starting Rep {drillTrainingState.currentRep}{' '}
+            {drillTrainingState.targetReps > 0 ? `of ${drillTrainingState.targetReps}` : ''}
+          </span>
+        </div>
+      )}
+
+      {/* Target Reps Completed Banner */}
+      {drillTrainingState &&
+        drillTrainingState.targetReps > 0 &&
+        drillTrainingState.currentRep >= drillTrainingState.targetReps &&
+        progress >= 0.98 &&
+        !isPlaying &&
+        !drillTrainingState.isResettingRep && (
+          <div className="absolute top-28 left-1/2 -translate-x-1/2 bg-slate-950/95 border-2 border-amber-400 rounded-2xl px-6 py-4 shadow-2xl flex flex-col items-center gap-2.5 z-30 animate-in zoom-in-95">
+            <div className="flex items-center gap-2 text-amber-400 font-black text-sm">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              <span>
+                DRILL SET COMPLETED ({drillTrainingState.targetReps} / {drillTrainingState.targetReps}{' '}
+                REPS)
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-300 text-center max-w-sm">
+              Target repetitions achieved! Run another repeat block or continue looping.
+            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <button
+                onClick={() => {
+                  onResetDrillReps?.();
+                  if (onTogglePlay) onTogglePlay();
+                }}
+                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-1.5 cursor-pointer shadow-md"
+              >
+                <Repeat className="w-3.5 h-3.5" />
+                <span>Repeat Drill (+{drillTrainingState.targetReps} Reps)</span>
+              </button>
+              <button
+                onClick={() => onChangeDrillTargetReps?.(0)}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs cursor-pointer border border-slate-700"
+              >
+                <span>Infinite Loop (∞)</span>
+              </button>
+            </div>
+          </div>
+      )}
+
       {/* ================= Floating Coaching Video Tutorial Overlay (HUD) ================= */}
       {isCoachingOverlayOpen && (
         <CoachingVideoOverlay
@@ -1240,6 +2019,37 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           showFieldHighlights={showCoachingFieldHighlights}
           onToggleFieldHighlights={(val) => setShowCoachingFieldHighlights(val)}
         />
+      )}
+
+      {/* ================= Live On-Field Active Coaching Cue Pill ================= */}
+      {activeCoachingCue && (
+        <div
+          id="field-active-coaching-cue-hud"
+          className="absolute bottom-16 sm:bottom-18 left-1/2 -translate-x-1/2 z-25 max-w-[92%] sm:max-w-md bg-slate-950/90 border border-blue-400/80 backdrop-blur-md rounded-2xl px-4 py-2.5 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-150 flex items-start gap-3 pointer-events-auto"
+        >
+          <div className="w-2.5 h-2.5 rounded-full bg-blue-400 animate-ping shrink-0 mt-1" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-mono font-black text-amber-300">
+                {activeCoachingCue.timeSeconds.toFixed(1)}s
+              </span>
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-blue-900/80 text-blue-200 border border-blue-700/60">
+                {activeCoachingCue.phaseLabel || 'CUE'}
+              </span>
+              {activeCoachingCue.targetPlayerId && activeCoachingCue.targetPlayerId !== 'ALL' && (
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-300 border border-emerald-700/50">
+                  Target: {activeCoachingCue.targetPlayerId}
+                </span>
+              )}
+            </div>
+            <div className="text-xs font-bold text-white leading-tight mt-0.5 truncate">
+              {activeCoachingCue.title}
+            </div>
+            <div className="text-[11px] text-slate-300 font-sans line-clamp-1 mt-0.5">
+              {activeCoachingCue.description}
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

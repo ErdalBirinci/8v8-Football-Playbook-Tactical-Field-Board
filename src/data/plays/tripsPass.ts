@@ -1,7 +1,7 @@
 import { Play } from '../../types';
 import { generateRoutePoints } from '../routeGenerator';
 
-// Helper to build 7v7 Trips Pass plays
+// Helper to build 8v8 Trips Pass plays (Finland University League)
 function createTripsPassPlay(
   playNumber: string | number,
   isRight: boolean,
@@ -17,30 +17,37 @@ function createTripsPassPlay(
   const sideLabel = isRight ? 'Right' : 'Left';
   const code = `${playNumber}. TRIPS ${dir} ${r1} ${r2} ${r3}${specialTag ? ' ' + specialTag : ''}`;
 
-  // Positions on field:
+  // 8v8 Positions on field:
   // Center: (50, 65)
   // QB: (50, 75)
   // RB: (isRight ? 42 : 58, 75)
-  // Backside X (Cilek): (isRight ? 16 : 84, 65)
-  // Trips side (Outside Z, Mid Y, Inside H):
-  // If Right: Z=88, Y=76, H=66
-  // If Left: Z=12, Y=24, H=34
+  // Trips side (Z Outside, Y Mid Slot, W Inside Slot):
+  // 8v8 Alignment with 3 O-Line (LG, C, RG):
+  // Line of Scrimmage:
+  // LG: x=44, y=65
+  // C:  x=50, y=65
+  // RG: x=56, y=65
+  // QB: x=50, y=75
+  // Trips Side 3 Receivers:
+  // If Right: Z=88 (Outside), Y=76 (Middle Slot), H=64 (Inside Slot)
+  // If Left:  Z=12 (Outside), Y=24 (Middle Slot), H=36 (Inside Slot)
+  // Backside 1 Receiver:
+  // If Right: X=14 (Backside Solo)
+  // If Left:  X=86 (Backside Solo)
   const zX = isRight ? 88 : 12;
   const yX = isRight ? 76 : 24;
-  const hX = isRight ? 66 : 34;
-  const xX = isRight ? 16 : 84;
-  const rbX = isRight ? 42 : 58;
+  const hX = isRight ? 64 : 36;
+  const xX = isRight ? 14 : 86;
 
-  const zRouteCode = r1;
-  const yRouteCode = r2;
-  const hRouteCode = pumpkinRoute !== undefined ? pumpkinRoute : r3;
+  const zRouteCode = isScreen ? 'BLOCK' : r1;
+  const yRouteCode = isScreen ? 'BLOCK' : r2;
+  const hRouteCode = isScreen ? 'SCREEN' : (pumpkinRoute !== undefined ? pumpkinRoute : r3);
   const cilekCode = cilekRoute;
 
-  const zGen = generateRoutePoints(zX, 65, isScreen ? 'BLOCK' : zRouteCode, { isRightSide: isRight });
-  const yGen = generateRoutePoints(yX, 66, isScreen ? 'BLOCK' : yRouteCode, { isRightSide: isRight });
-  const hGen = generateRoutePoints(hX, 66, isScreen ? 'SCREEN' : hRouteCode, { isRightSide: isRight });
+  const zGen = generateRoutePoints(zX, 65, zRouteCode, { isRightSide: isRight });
+  const yGen = generateRoutePoints(yX, 66, yRouteCode, { isRightSide: isRight });
+  const hGen = generateRoutePoints(hX, 66, hRouteCode, { isRightSide: isRight });
   const xGen = generateRoutePoints(xX, 65, cilekCode, { isRightSide: !isRight });
-  const rbGen = generateRoutePoints(rbX, 75, isScreen ? 'BLOCK' : 1, { isRightSide: !isRight });
 
   return {
     id: `trips-pass-${playNumber}-${dir.toLowerCase()}`,
@@ -51,20 +58,20 @@ function createTripsPassPlay(
     category: 'TRIPS PASS',
     playType: isScreen ? 'SCREEN' : 'PASS',
     direction: dir,
-    formationName: `Trips ${sideLabel} (3x1 Spread)`,
-    conceptName: isScreen ? 'WR Screen Pass with Dual Slot Blocks' : `Trips Route Combination (${r1}-${r2}-${r3})`,
-    tags: ['Trips', isRight ? 'Right Side' : 'Left Side', isScreen ? 'Screen' : 'Pass Concept'],
-    description: `7v7 Trips ${sideLabel} pass concept. Outside WR runs route ${r1}, middle slot runs ${r2}, inside slot runs ${hRouteCode}, and backside single receiver (Solo/X) runs ${cilekCode}.`,
+    formationName: `Trips ${sideLabel} (8v8 3-OL Spread)`,
+    conceptName: isScreen ? '8v8 WR Screen Pass with Slot Blocks' : `8v8 Trips Route Concept (${r1}-${r2}-${r3})`,
+    tags: ['Trips', isRight ? 'Right Side' : 'Left Side', isScreen ? 'Screen' : 'Pass Concept', '3 O-Line', '8v8'],
+    description: `8v8 Trips ${sideLabel} pass play (Finland University League) protected by a 3-man offensive line (LG, C, RG). Trips side runs ${r1} (Z), ${r2} (Y), and ${r3} (H), with isolated backside X running ${cilekCode}.`,
     coachingPoints: [
-      `1st Read: Check primary route progression on trips strength side (${r1}/${r2}/${hRouteCode}).`,
-      `2nd Read: If safety rolls to trips side, isolate Backside X (Solo) on 1-on-1 matchup.`,
-      `Checkdown: Running Back flat route or underneath hot outlet.`,
+      `1st Read: Work the 3-receiver trips concept (${r1} / ${r2} / ${r3}) against zone leverage.`,
+      `2nd Read: Backside X on 1-on-1 isolated alert (${cilekCode}) against single-high or press man.`,
+      `3 O-Line Pocket: Center and Guards anchor interior rush to provide clean passing platform.`,
     ],
     progressionReads: [
-      { order: 1, playerId: 'Z', concept: `Primary Outside Break (${r1})`, cue: 'Check cornerback leverage on snap' },
-      { order: 2, playerId: 'H', concept: `Seam / Inside Route (${hRouteCode})`, cue: 'Read middle linebacker/safety split' },
-      { order: 3, playerId: 'X', concept: `Backside Solo (${cilekCode})`, cue: 'Single-coverage 1-on-1 alert' },
-      { order: 4, playerId: 'RB', concept: 'Checkdown Flat', cue: 'Underneath safety valve' },
+      { order: 1, playerId: 'Z', concept: `Primary Outside Route (${r1})`, cue: 'Check cornerback leverage and cushion' },
+      { order: 2, playerId: 'Y', concept: `Middle Slot Route (${r2})`, cue: 'Target intermediate void behind linebackers' },
+      { order: 3, playerId: 'H', concept: `Inside Slot Route (${r3})`, cue: 'Read middle safety and split coverage' },
+      { order: 4, playerId: 'X', concept: `Backside Solo (${cilekCode})`, cue: 'Isolate 1-on-1 matchup' },
     ],
     qbDrop: isScreen ? 'Quick 1-Step' : 'Shotgun 3-Step',
     players: {
@@ -73,7 +80,7 @@ function createTripsPassPlay(
         label: 'QB',
         positionName: 'Quarterback',
         initialPos: { x: 50, y: 75 },
-        roleDescription: 'Shotgun dropback, read trips progression inside-out',
+        roleDescription: 'Shotgun dropback in 3-man pocket, read trips progression',
         route: {
           name: isScreen ? 'Quick Catch & Fire' : '3-Step Drop',
           points: [
@@ -85,9 +92,9 @@ function createTripsPassPlay(
       C: {
         id: 'C',
         label: 'C',
-        positionName: 'Center',
+        positionName: 'Center (3 O-Line)',
         initialPos: { x: 50, y: 65 },
-        roleDescription: 'Snaps ball and executes pass protection block',
+        roleDescription: 'Snaps ball and anchors interior pocket',
         route: {
           name: 'Pass Protection',
           points: [
@@ -97,10 +104,40 @@ function createTripsPassPlay(
           isBlocking: true,
         },
       },
+      LG: {
+        id: 'LG',
+        label: 'LG',
+        positionName: 'Left Guard (3 O-Line)',
+        initialPos: { x: 44, y: 65 },
+        roleDescription: 'Pass protection on left A/B-gap rushers',
+        route: {
+          name: 'Pass Protection',
+          points: [
+            { x: 44, y: 65, type: 'snap' },
+            { x: 44, y: 64, type: 'block', label: 'PRO' },
+          ],
+          isBlocking: true,
+        },
+      },
+      RG: {
+        id: 'RG',
+        label: 'RG',
+        positionName: 'Right Guard (3 O-Line)',
+        initialPos: { x: 56, y: 65 },
+        roleDescription: 'Pass protection on right A/B-gap rushers',
+        route: {
+          name: 'Pass Protection',
+          points: [
+            { x: 56, y: 65, type: 'snap' },
+            { x: 56, y: 64, type: 'block', label: 'PRO' },
+          ],
+          isBlocking: true,
+        },
+      },
       Z: {
         id: 'Z',
-        label: isRight ? 'Z (WR1)' : 'X (WR1)',
-        positionName: 'Outside Receiver (WR1)',
+        label: isRight ? 'Z (WR-R)' : 'Z (WR-L)',
+        positionName: 'Outside Trips WR',
         initialPos: { x: zX, y: 65 },
         roleDescription: `Runs route ${r1}`,
         route: {
@@ -113,8 +150,8 @@ function createTripsPassPlay(
       },
       Y: {
         id: 'Y',
-        label: isRight ? 'Y (SR2)' : 'H (SR2)',
-        positionName: 'Middle Slot Receiver (SR2)',
+        label: isRight ? 'Y (Slot-1)' : 'Y (Slot-1)',
+        positionName: 'Middle Slot Receiver',
         initialPos: { x: yX, y: 66 },
         roleDescription: `Runs route ${r2}`,
         route: {
@@ -127,20 +164,20 @@ function createTripsPassPlay(
       },
       H: {
         id: 'H',
-        label: isRight ? 'H (SR1 / SLOT)' : 'Y (SR1 / SLOT)',
-        positionName: 'Inside Slot Receiver (SR1)',
+        label: isRight ? 'H (Slot-2)' : 'H (Slot-2)',
+        positionName: 'Inside Slot Receiver',
         initialPos: { x: hX, y: 66 },
-        roleDescription: `Runs route ${hRouteCode}`,
+        roleDescription: `Runs route ${r3}`,
         route: {
           name: hGen.name,
-          routeNumber: hRouteCode,
+          routeNumber: r3,
           points: hGen.points,
           color: '#f59e0b',
         },
       },
       X: {
         id: 'X',
-        label: isRight ? 'X (SOLO)' : 'Z (SOLO)',
+        label: isRight ? 'X (WR-L)' : 'X (WR-R)',
         positionName: 'Backside Isolated Receiver (Solo)',
         initialPos: { x: xX, y: 65 },
         roleDescription: `Backside 1-on-1 route ${cilekCode}`,
@@ -149,19 +186,6 @@ function createTripsPassPlay(
           routeNumber: cilekCode,
           points: xGen.points,
           color: '#ec4899',
-        },
-      },
-      RB: {
-        id: 'RB',
-        label: 'RB',
-        positionName: 'Running Back',
-        initialPos: { x: rbX, y: 75 },
-        roleDescription: 'Check-release to flat or pass pro',
-        route: {
-          name: rbGen.name,
-          points: rbGen.points,
-          isCheckdown: true,
-          color: '#a855f7',
         },
       },
     },

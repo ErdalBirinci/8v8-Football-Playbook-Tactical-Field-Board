@@ -15,21 +15,20 @@ function createEmptyPassPlay(
   const sideLabel = isRight ? 'Right' : 'Left';
   const code = `${playNumber}. EMPTY ${dir} ${r1} ${r2} ${r3}${specialTag ? ' ' + specialTag : ''}`;
 
-  // Positions on field in 5-wide Empty:
-  // Left: X=14 (WR1-L), H=30 (Slot1-L)
-  // Center: C=50, QB=50
-  // Right: Y=66 (Slot1-R), SR=78 (Slot2-R), Z=88 (WR1-R)
-  const zX = isRight ? 88 : 14;
-  const srX = isRight ? 78 : 30;
-  const yX = isRight ? 66 : 42;
-  const hX = isRight ? 30 : 70;
-  const xX = isRight ? 14 : 86;
+  // 8v8 Empty Alignment with 3 O-Line (LG, C, RG) and 4 Receivers:
+  // Empty backfield: QB alone in shotgun
+  // Offensive Line: LG=44, C=50, RG=56
+  // Left Receivers: X=14 (WR-L), H=30 (Slot-L)
+  // Right Receivers: Y=70 (Slot-R), Z=86 (WR-R)
+  const zX = 86;
+  const yX = 70;
+  const hX = 30;
+  const xX = 14;
 
-  const zGen = generateRoutePoints(zX, 65, r1, { isRightSide: isRight });
-  const srGen = generateRoutePoints(srX, 66, r2, { isRightSide: isRight });
-  const yGen = generateRoutePoints(yX, 66, r3, { isRightSide: isRight });
-  const hGen = generateRoutePoints(hX, 66, leftWR2, { isRightSide: !isRight });
-  const xGen = generateRoutePoints(xX, 65, leftWR1, { isRightSide: !isRight });
+  const zGen = generateRoutePoints(zX, 65, isRight ? r1 : leftWR1, { isRightSide: true });
+  const yGen = generateRoutePoints(yX, 66, isRight ? r2 : leftWR2, { isRightSide: true });
+  const hGen = generateRoutePoints(hX, 66, isRight ? leftWR2 : r2, { isRightSide: false });
+  const xGen = generateRoutePoints(xX, 65, isRight ? leftWR1 : r1, { isRightSide: false });
 
   return {
     id: `empty-pass-${playNumber}-${dir.toLowerCase()}`,
@@ -40,20 +39,20 @@ function createEmptyPassPlay(
     category: 'EMPTY PASS',
     playType: 'PASS',
     direction: dir,
-    formationName: `Empty ${sideLabel} (5-Wide Spread)`,
-    conceptName: `5-Wide Route Concept (${r1}-${r2}-${r3})`,
-    tags: ['Empty', 'Pass Concept', isRight ? 'Right Trips Side' : 'Left Trips Side', '5-Wide'],
-    description: `7v7 Empty ${sideLabel} 5-wide pass play. Stretches the defense horizontally with 5 receivers releasing simultaneously across all levels.`,
+    formationName: `Empty ${sideLabel} (8v8 3-OL Spread)`,
+    conceptName: `8v8 Empty Route Concept (${r1}-${r2}-${r3})`,
+    tags: ['Empty', 'Pass Concept', isRight ? 'Right Side' : 'Left Side', '3 O-Line', '8v8'],
+    description: `8v8 Empty ${sideLabel} pass play (Finland University League) with an empty backfield. Protected by 3 offensive linemen (LG, C, RG) with a 4-receiver spread horizontally challenging boundary and field coverage.`,
     coachingPoints: [
-      `Quick 3-step rhythm drop from shotgun.`,
-      `Primary read to the 3-receiver trips side (${r1} / ${r2} / ${r3}).`,
-      `Backside 2-receiver side (${leftWR1} / ${leftWR2}) acts as man-beater isolate or alert read.`,
+      `Quick 3-step rhythm drop from shotgun inside 3-man offensive line protection.`,
+      `Primary read to the strength side (${isRight ? 'Right: Z/Y' : 'Left: X/H'}).`,
+      `Backside 2-receiver combination acts as quick alert read against press man.`,
     ],
     progressionReads: [
-      { order: 1, playerId: isRight ? 'Z' : 'X', concept: `Trips Outside Route (${r1})`, cue: 'Check safety depth and corner cushion' },
-      { order: 2, playerId: isRight ? 'SR' : 'H', concept: `Middle Slot Route (${r2})`, cue: 'Target seam or intermediate void' },
-      { order: 3, playerId: isRight ? 'Y' : 'Y', concept: `Inside Slot Route (${r3})`, cue: 'Underneath crossing or curl window' },
-      { order: 4, playerId: isRight ? 'X' : 'Z', concept: `Backside Matchup (${leftWR1})`, cue: 'Alert against Cover 0 / Cover 1 man' },
+      { order: 1, playerId: isRight ? 'Z' : 'X', concept: `Strength Outside Route (${r1})`, cue: 'Check safety depth and corner cushion' },
+      { order: 2, playerId: isRight ? 'Y' : 'H', concept: `Strength Slot Route (${r2})`, cue: 'Target seam or intermediate void' },
+      { order: 3, playerId: isRight ? 'H' : 'Y', concept: `Backside Slot Route (${leftWR2})`, cue: 'Underneath crossing or curl window' },
+      { order: 4, playerId: isRight ? 'X' : 'Z', concept: `Backside Outside Matchup (${leftWR1})`, cue: '1-on-1 boundary isolate' },
     ],
     qbDrop: 'Shotgun 3-Step',
     players: {
@@ -74,7 +73,7 @@ function createEmptyPassPlay(
       C: {
         id: 'C',
         label: 'C',
-        positionName: 'Center',
+        positionName: 'Center (3 O-Line)',
         initialPos: { x: 50, y: 65 },
         roleDescription: 'Snaps ball and seals interior pass rush',
         route: {
@@ -86,71 +85,90 @@ function createEmptyPassPlay(
           isBlocking: true,
         },
       },
-      Z: {
-        id: 'Z',
-        label: isRight ? 'Z (WR1-R)' : 'X (WR1-L)',
-        positionName: 'Outside Trips Receiver',
-        initialPos: { x: zX, y: 65 },
-        roleDescription: `Runs route ${r1}`,
+      LG: {
+        id: 'LG',
+        label: 'LG',
+        positionName: 'Left Guard (3 O-Line)',
+        initialPos: { x: 44, y: 65 },
+        roleDescription: 'Pass protection against left rushers',
         route: {
-          name: zGen.name,
-          routeNumber: r1,
-          points: zGen.points,
-          isPrimary: true,
-          color: '#38bdf8',
+          name: 'Pass Protection',
+          points: [
+            { x: 44, y: 65, type: 'snap' },
+            { x: 44, y: 64, type: 'block', label: 'PRO' },
+          ],
+          isBlocking: true,
         },
       },
-      SR: {
-        id: 'SR',
-        label: isRight ? 'SR (Slot2-R)' : 'H (Slot2-L)',
-        positionName: 'Middle Slot Receiver',
-        initialPos: { x: srX, y: 66 },
-        roleDescription: `Runs route ${r2}`,
+      RG: {
+        id: 'RG',
+        label: 'RG',
+        positionName: 'Right Guard (3 O-Line)',
+        initialPos: { x: 56, y: 65 },
+        roleDescription: 'Pass protection against right rushers',
         route: {
-          name: srGen.name,
-          routeNumber: r2,
-          points: srGen.points,
-          isSecondary: true,
-          color: '#10b981',
-        },
-      },
-      Y: {
-        id: 'Y',
-        label: isRight ? 'Y (Slot1-R / PUMPKIN)' : 'Y (Slot1-L / PUMPKIN)',
-        positionName: 'Inside Slot Receiver',
-        initialPos: { x: yX, y: 66 },
-        roleDescription: `Runs route ${r3}`,
-        route: {
-          name: yGen.name,
-          routeNumber: r3,
-          points: yGen.points,
-          color: '#f59e0b',
-        },
-      },
-      H: {
-        id: 'H',
-        label: isRight ? 'H (Slot-L)' : 'SR (Slot-R)',
-        positionName: 'Backside Inside Receiver',
-        initialPos: { x: hX, y: 66 },
-        roleDescription: `Runs route ${leftWR2}`,
-        route: {
-          name: hGen.name,
-          routeNumber: leftWR2,
-          points: hGen.points,
-          color: '#ec4899',
+          name: 'Pass Protection',
+          points: [
+            { x: 56, y: 65, type: 'snap' },
+            { x: 56, y: 64, type: 'block', label: 'PRO' },
+          ],
+          isBlocking: true,
         },
       },
       X: {
         id: 'X',
-        label: isRight ? 'X (WR-L / SOLO)' : 'Z (WR-R / SOLO)',
-        positionName: 'Backside Outside Receiver',
+        label: 'X (WR-L)',
+        positionName: 'Outside Left WR',
         initialPos: { x: xX, y: 65 },
-        roleDescription: `Runs route ${leftWR1}`,
+        roleDescription: !isRight ? `Primary route ${r1}` : `Backside route ${leftWR1}`,
         route: {
           name: xGen.name,
-          routeNumber: leftWR1,
+          routeNumber: !isRight ? r1 : leftWR1,
           points: xGen.points,
-          color: '#a855f7',
+          isPrimary: !isRight,
+          color: '#ec4899',
+        },
+      },
+      H: {
+        id: 'H',
+        label: 'H (Slot-L)',
+        positionName: 'Inside Left Slot',
+        initialPos: { x: hX, y: 66 },
+        roleDescription: !isRight ? `Slot route ${r2}` : `Backside slot ${leftWR2}`,
+        route: {
+          name: hGen.name,
+          routeNumber: !isRight ? r2 : leftWR2,
+          points: hGen.points,
+          isSecondary: !isRight,
+          color: '#8b5cf6',
+        },
+      },
+      Y: {
+        id: 'Y',
+        label: 'Y (Slot-R)',
+        positionName: 'Inside Right Slot',
+        initialPos: { x: yX, y: 66 },
+        roleDescription: isRight ? `Slot route ${r2}` : `Backside slot ${leftWR2}`,
+        route: {
+          name: yGen.name,
+          routeNumber: isRight ? r2 : leftWR2,
+          points: yGen.points,
+          isSecondary: isRight,
+          color: '#10b981',
+        },
+      },
+      Z: {
+        id: 'Z',
+        label: 'Z (WR-R)',
+        positionName: 'Outside Right WR',
+        initialPos: { x: zX, y: 65 },
+        roleDescription: isRight ? `Primary route ${r1}` : `Backside route ${leftWR1}`,
+        route: {
+          name: zGen.name,
+          routeNumber: isRight ? r1 : leftWR1,
+          points: zGen.points,
+          isPrimary: isRight,
+          color: '#38bdf8',
         },
       },
     },

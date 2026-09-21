@@ -10,9 +10,13 @@ import {
   Tag,
   Palette,
   Eye,
+  Repeat,
+  Target,
+  Grid,
 } from 'lucide-react';
 import { DEFENSE_SCHEMES } from '../data/defenseSchemes';
-import { DefenseScheme } from '../types';
+import { getAllDefenseSchemes } from '../utils/defensiveScoutStorage';
+import { DefenseScheme, DrillTrainingSession } from '../types';
 
 interface AnimationControllerProps {
   progress: number;
@@ -31,8 +35,15 @@ interface AnimationControllerProps {
   setShowLabels: (val: boolean) => void;
   showZones: boolean;
   setShowZones: (val: boolean) => void;
-  fieldTheme: 'turf' | 'tactical' | 'chalkboard';
-  setFieldTheme: (theme: 'turf' | 'tactical' | 'chalkboard') => void;
+  showFieldGrid?: boolean;
+  setShowFieldGrid?: (val: boolean) => void;
+  fieldTheme: 'turf' | 'tactical' | 'chalkboard' | 'stadium-night';
+  setFieldTheme: (theme: 'turf' | 'tactical' | 'chalkboard' | 'stadium-night') => void;
+  isAutoLoop?: boolean;
+  onToggleAutoLoop?: () => void;
+  drillTraining?: DrillTrainingSession | null;
+  onExitDrill?: () => void;
+  onOpenDefensiveScout?: () => void;
 }
 
 export const AnimationController: React.FC<AnimationControllerProps> = ({
@@ -52,10 +63,30 @@ export const AnimationController: React.FC<AnimationControllerProps> = ({
   setShowLabels,
   showZones,
   setShowZones,
+  showFieldGrid = false,
+  setShowFieldGrid,
   fieldTheme,
   setFieldTheme,
+  isAutoLoop = false,
+  onToggleAutoLoop,
+  drillTraining,
+  onExitDrill,
+  onOpenDefensiveScout,
 }) => {
-  const togglePlay = () => setIsPlaying(!isPlaying);
+  const allAvailableSchemes = getAllDefenseSchemes();
+  const customSchemes = allAvailableSchemes.filter((s) => s.isCustom);
+  const builtInZone = allAvailableSchemes.filter((s) => ['cover-2', 'cover-3', 'cover-4', 'cover-6'].includes(s.id));
+  const builtInMan = allAvailableSchemes.filter((s) => ['cover-0', 'cover-1', 'man-match', 'bracket'].includes(s.id));
+  const togglePlay = () => {
+    if (!isPlaying) {
+      if (progress >= 1) {
+        setProgress(0);
+      }
+      setIsPlaying(true);
+    } else {
+      setIsPlaying(false);
+    }
+  };
 
   const handleReset = () => {
     setIsPlaying(false);
@@ -173,6 +204,46 @@ export const AnimationController: React.FC<AnimationControllerProps> = ({
               </button>
             ))}
           </div>
+
+          {/* Auto-Loop Reps Toggle */}
+          {onToggleAutoLoop && (
+            <button
+              onClick={onToggleAutoLoop}
+              title={isAutoLoop ? 'Auto-loop repetitions is enabled' : 'Enable auto-loop repetitions'}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-mono font-bold transition-all border cursor-pointer ${
+                isAutoLoop
+                  ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
+                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+            >
+              <Repeat
+                className={`w-3.5 h-3.5 ${isAutoLoop && isPlaying ? 'animate-spin' : ''}`}
+                style={{ animationDuration: '4s' }}
+              />
+              <span className="hidden sm:inline">Loop</span>
+              <span className="text-[10px] uppercase">{isAutoLoop ? 'ON' : 'OFF'}</span>
+            </button>
+          )}
+
+          {/* Drill Rep Badge if active */}
+          {drillTraining && (
+            <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 text-emerald-800 px-2.5 py-1 rounded-xl text-xs font-mono font-bold">
+              <Target className="w-3.5 h-3.5 text-emerald-600" />
+              <span>
+                REP {drillTraining.currentRep}
+                {drillTraining.targetReps > 0 ? `/${drillTraining.targetReps}` : ''}
+              </span>
+              {onExitDrill && (
+                <button
+                  onClick={onExitDrill}
+                  className="ml-1 text-emerald-600 hover:text-rose-600 cursor-pointer text-[10px]"
+                  title="Exit drill mode"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Tactical Overlay Toggles */}
@@ -203,8 +274,30 @@ export const AnimationController: React.FC<AnimationControllerProps> = ({
             <span>Labels</span>
           </button>
 
+          {/* 5-Yard Field Grid Toggle */}
+          {setShowFieldGrid && (
+            <button
+              id="controller-field-grid-toggle"
+              onClick={() => setShowFieldGrid(!showFieldGrid)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all border cursor-pointer ${
+                showFieldGrid
+                  ? 'bg-cyan-50 text-cyan-800 border-cyan-300 shadow-2xs font-bold'
+                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100 hover:text-slate-900'
+              }`}
+              title="Overlay 5-Yard Line Hashmark Grid for precise route depth and formation alignment"
+            >
+              <Grid className="w-3.5 h-3.5 text-cyan-600" />
+              <span>Field Grid</span>
+              {showFieldGrid && (
+                <span className="px-1 py-0.2 rounded text-[9px] font-mono bg-cyan-200/90 text-cyan-900 font-bold">
+                  5-YD
+                </span>
+              )}
+            </button>
+          )}
+
           {/* Defensive Scheme Toggle & Selector */}
-          <div className="flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1.5">
             <button
               onClick={() => {
                 const next = !showDefense;
@@ -224,20 +317,60 @@ export const AnimationController: React.FC<AnimationControllerProps> = ({
             </button>
 
             {showDefense && (
-              <select
-                value={defenseScheme?.id || 'cover-2'}
-                onChange={(e) => {
-                  const s = DEFENSE_SCHEMES.find((ds) => ds.id === e.target.value);
-                  setDefenseScheme(s || null);
-                }}
-                className="bg-white text-rose-700 border border-rose-300 rounded-xl px-2.5 py-1.5 text-xs font-mono font-medium focus:outline-none focus:border-rose-500 shadow-2xs"
-              >
-                {DEFENSE_SCHEMES.map((scheme) => (
-                  <option key={scheme.id} value={scheme.id}>
-                    {scheme.name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={defenseScheme?.id || 'cover-2'}
+                  onChange={(e) => {
+                    const s = allAvailableSchemes.find((ds) => ds.id === e.target.value);
+                    setDefenseScheme(s || null);
+                  }}
+                  className="bg-white text-rose-700 border border-rose-300 rounded-xl px-2.5 py-1.5 text-xs font-mono font-medium focus:outline-none focus:border-rose-500 shadow-2xs cursor-pointer max-w-[160px] sm:max-w-xs truncate"
+                >
+                  {customSchemes.length > 0 && (
+                    <optgroup label="Coach Custom Coverages">
+                      {customSchemes.map((scheme) => (
+                        <option key={scheme.id} value={scheme.id}>
+                          ⭐ {scheme.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  <optgroup label="Zone Shells">
+                    {builtInZone.map((scheme) => (
+                      <option key={scheme.id} value={scheme.id}>
+                        {scheme.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Man & Hybrid Match Variations">
+                    {builtInMan.map((scheme) => (
+                      <option key={scheme.id} value={scheme.id}>
+                        {scheme.name}
+                      </option>
+                    ))}
+                  </optgroup>
+                </select>
+
+                {/* Open Defensive Scout Modal Button */}
+                {onOpenDefensiveScout && (
+                  <button
+                    id="open-defense-scout-controller-btn"
+                    onClick={onOpenDefensiveScout}
+                    className="px-2 py-1.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 text-[11px] font-bold border border-rose-300 flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                    title="Open Defensive Scout & Coverage Lab"
+                  >
+                    <Shield className="w-3 h-3 text-rose-600" />
+                    <span className="hidden sm:inline">Scout Lab</span>
+                  </button>
+                )}
+
+                {/* Quick Scheme Identifier Badge */}
+                {defenseScheme && (
+                  <span className="hidden xl:inline-flex items-center px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-rose-100/80 text-rose-800 border border-rose-200">
+                    {defenseScheme.shortName}
+                  </span>
+                )}
+              </div>
             )}
           </div>
 
@@ -272,6 +405,16 @@ export const AnimationController: React.FC<AnimationControllerProps> = ({
               }`}
             >
               Chalk
+            </button>
+            <button
+              onClick={() => setFieldTheme('stadium-night')}
+              className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                fieldTheme === 'stadium-night'
+                  ? 'bg-emerald-950 text-emerald-300 font-semibold shadow-2xs border border-emerald-600/40'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Night
             </button>
           </div>
         </div>

@@ -16,12 +16,15 @@ function createOneLinePassPlay(
   const routeList = [r1, r2, r3, r4, r5].filter((r) => r !== undefined).join(' ');
   const code = `* 1 LINE ${bunchCount} ${dir} ${routeList}`;
 
-  // In 1 Line bunch, receivers are aligned in a single horizontal or compressed bunch line:
-  // E.g., 3 bunch right: WR1 at 70, WR2 at 78, WR3 at 86, X at 18, RB at 42
-  // Or 4 bunch right: WR1 at 65, WR2 at 73, WR3 at 81, WR4 at 89, RB at 42
-  const wr1X = isRight ? (bunchCount === 4 ? 65 : 70) : (bunchCount === 4 ? 35 : 30);
-  const wr2X = isRight ? (bunchCount === 4 ? 73 : 78) : (bunchCount === 4 ? 27 : 22);
-  const wr3X = isRight ? (bunchCount === 4 ? 81 : 86) : (bunchCount === 4 ? 19 : 14);
+  // 8v8 1-Line Bunch Alignment with 3 O-Line (LG, C, RG):
+  // Line of Scrimmage: LG at 44, C at 50, RG at 56
+  // QB at 50
+  // Receivers (4 total):
+  // If bunchCount === 3: 3 in bunch, 1 backside single
+  // If bunchCount === 4: 4 in bunch, 0 backside
+  const wr1X = isRight ? (bunchCount === 4 ? 65 : 68) : (bunchCount === 4 ? 35 : 32);
+  const wr2X = isRight ? (bunchCount === 4 ? 73 : 76) : (bunchCount === 4 ? 27 : 24);
+  const wr3X = isRight ? (bunchCount === 4 ? 81 : 84) : (bunchCount === 4 ? 19 : 16);
   const wr4X = isRight ? 89 : 11;
   const singleX = isRight ? 16 : 84;
 
@@ -29,7 +32,6 @@ function createOneLinePassPlay(
   const g2 = generateRoutePoints(wr2X, 65, r2, { isRightSide: isRight });
   const g3 = generateRoutePoints(wr3X, 65, r3, { isRightSide: isRight });
   const g4 = generateRoutePoints(bunchCount === 4 ? wr4X : singleX, 65, r4, { isRightSide: bunchCount === 4 ? isRight : !isRight });
-  const g5 = r5 !== undefined ? generateRoutePoints(singleX, 65, r5, { isRightSide: !isRight }) : undefined;
 
   return {
     id: `one-line-pass-${idSuffix}-${dir.toLowerCase()}`,
@@ -40,11 +42,12 @@ function createOneLinePassPlay(
     category: '1 LINE PASS',
     playType: 'PASS',
     direction: dir,
-    formationName: `1-Line ${bunchCount}x1 Bunch (${sideLabel})`,
-    conceptName: `1-Line Bunch Combination (${routeList})`,
-    tags: ['1 Line', 'Bunch Formation', isRight ? 'Right Bunch' : 'Left Bunch', 'Pass Concept'],
-    description: `7v7 1-Line bunch pass play. Concentrates ${bunchCount} receivers along a single compressed line of scrimmage to overwhelm zone landmarks and confuse man switch rules.`,
+    formationName: `1-Line ${bunchCount}x1 Bunch (8v8 3-OL ${sideLabel})`,
+    conceptName: `8v8 1-Line Bunch Combination (${routeList})`,
+    tags: ['1 Line', 'Bunch Formation', isRight ? 'Right Bunch' : 'Left Bunch', 'Pass Concept', '3 O-Line', '8v8'],
+    description: `8v8 1-Line bunch pass play (Finland University League) protected by 3 offensive linemen (LG, C, RG). Concentrates receivers along a single compressed line of scrimmage to overwhelm zone landmarks and confuse man switch rules.`,
     coachingPoints: [
+      `3 O-Line Protection: LG, C, RG form a tight interior cup to allow bunch route concept development.`,
       `Bunch Spacing: Maintain 2-3 yard intervals between receivers at the line.`,
       `Immediate Route Distribution: Disperse high, medium, and low into distinct coverage voids.`,
       `Primary Read: Check inside-out across the bunch alignment.`,
@@ -71,12 +74,36 @@ function createOneLinePassPlay(
       C: {
         id: 'C',
         label: 'C',
-        positionName: 'Center',
+        positionName: 'Center (3 O-Line)',
         initialPos: { x: 50, y: 65 },
         roleDescription: 'Snap and execute pass pro block',
         route: {
           name: 'Pass Protection',
           points: [{ x: 50, y: 65, type: 'snap' }, { x: 50, y: 64, type: 'block', label: 'PRO' }],
+          isBlocking: true,
+        },
+      },
+      LG: {
+        id: 'LG',
+        label: 'LG',
+        positionName: 'Left Guard (3 O-Line)',
+        initialPos: { x: 44, y: 65 },
+        roleDescription: 'Pass protection against left rushers',
+        route: {
+          name: 'Pass Protection',
+          points: [{ x: 44, y: 65, type: 'snap' }, { x: 44, y: 64, type: 'block', label: 'PRO' }],
+          isBlocking: true,
+        },
+      },
+      RG: {
+        id: 'RG',
+        label: 'RG',
+        positionName: 'Right Guard (3 O-Line)',
+        initialPos: { x: 56, y: 65 },
+        roleDescription: 'Pass protection against right rushers',
+        route: {
+          name: 'Pass Protection',
+          points: [{ x: 56, y: 65, type: 'snap' }, { x: 56, y: 64, type: 'block', label: 'PRO' }],
           isBlocking: true,
         },
       },
@@ -106,24 +133,11 @@ function createOneLinePassPlay(
       },
       SINGLE: {
         id: 'SINGLE',
-        label: bunchCount === 4 ? (isRight ? 'WR4 (Bunch Far)' : 'WR4 (Bunch Far)') : (isRight ? 'X (Backside)' : 'Z (Backside)'),
+        label: bunchCount === 4 ? (isRight ? 'WR4 (Bunch Far)' : 'WR4 (Bunch Far)') : (isRight ? 'X (Backside Solo)' : 'Z (Backside Solo)'),
         positionName: bunchCount === 4 ? 'Far Bunch Receiver' : 'Backside Single Receiver',
         initialPos: { x: bunchCount === 4 ? wr4X : singleX, y: 65 },
         roleDescription: `Runs route ${r4}`,
         route: { name: g4.name, routeNumber: r4, points: g4.points, color: '#ec4899' },
-      },
-      RB: {
-        id: 'RB',
-        label: 'RB',
-        positionName: 'Running Back',
-        initialPos: { x: isRight ? 42 : 58, y: 75 },
-        roleDescription: g5 ? `Runs route ${r5}` : 'Checkdown flat release',
-        route: {
-          name: g5 ? g5.name : 'Flat Release',
-          points: g5 ? g5.points : [{ x: isRight ? 42 : 58, y: 75, type: 'snap' }, { x: isRight ? 25 : 75, y: 64, type: 'target', label: '1' }],
-          isCheckdown: true,
-          color: '#a855f7',
-        },
       },
     },
   };
@@ -140,10 +154,10 @@ export const ONE_LINE_PLAYS: Play[] = [
     category: '1 LINE RUN',
     playType: 'REVERSE',
     direction: 'RIGHT',
-    formationName: '1-Line 4-Right Bunch',
+    formationName: '1-Line 4-Right Bunch (8v8)',
     conceptName: 'Motion Reverse Sweep Right',
-    tags: ['1 Line', 'Reverse', 'Motion Run', 'Trick Play'],
-    description: '7v7 1-Line 4-Right formation where the left backside receiver motions across for a reverse sweep around the right perimeter.',
+    tags: ['1 Line', 'Reverse', 'Motion Run', 'Trick Play', '8v8'],
+    description: '8v8 1-Line 4-Right formation (Finland University League) where the left backside receiver motions across for a reverse sweep around the right perimeter.',
     coachingPoints: [
       'Sell initial run flow to the left.',
       'Smooth exchange on the reverse handoff at full speed.',
@@ -168,10 +182,26 @@ export const ONE_LINE_PLAYS: Play[] = [
       C: {
         id: 'C',
         label: 'C',
-        positionName: 'Center',
+        positionName: 'Center (3 O-Line)',
         initialPos: { x: 50, y: 65 },
         roleDescription: 'Interior seal block',
         route: { name: 'Seal Block', points: [{ x: 50, y: 65, type: 'snap' }, { x: 54, y: 60, type: 'block', label: 'SEAL' }], isBlocking: true },
+      },
+      LG: {
+        id: 'LG',
+        label: 'LG',
+        positionName: 'Left Guard (3 O-Line)',
+        initialPos: { x: 44, y: 65 },
+        roleDescription: 'Backside cutoff block',
+        route: { name: 'Cutoff Block', points: [{ x: 44, y: 65, type: 'snap' }, { x: 40, y: 58, type: 'block', label: 'BLOCK' }], isBlocking: true, color: '#f59e0b' },
+      },
+      RG: {
+        id: 'RG',
+        label: 'RG',
+        positionName: 'Right Guard (3 O-Line)',
+        initialPos: { x: 56, y: 65 },
+        roleDescription: 'Playside lead seal block',
+        route: { name: 'Lead Seal Block', points: [{ x: 56, y: 65, type: 'snap' }, { x: 62, y: 58, type: 'block', label: 'BLOCK' }], isBlocking: true, color: '#f59e0b' },
       },
       WR_MOTION: {
         id: 'WR_MOTION',
@@ -196,33 +226,25 @@ export const ONE_LINE_PLAYS: Play[] = [
         id: 'WR1',
         label: 'WR1 (Bunch)',
         positionName: 'Bunch Receiver 1',
-        initialPos: { x: 65, y: 65 },
+        initialPos: { x: 68, y: 65 },
         roleDescription: 'Crack block inside linebacker',
-        route: { name: 'Crack Block', points: [{ x: 65, y: 65, type: 'snap' }, { x: 60, y: 56, type: 'block', label: 'BLOCK' }], isBlocking: true, color: '#38bdf8' },
+        route: { name: 'Crack Block', points: [{ x: 68, y: 65, type: 'snap' }, { x: 64, y: 56, type: 'block', label: 'BLOCK' }], isBlocking: true, color: '#38bdf8' },
       },
       WR2: {
         id: 'WR2',
         label: 'WR2 (Bunch)',
         positionName: 'Bunch Receiver 2',
-        initialPos: { x: 73, y: 65 },
+        initialPos: { x: 76, y: 65 },
         roleDescription: 'Stalk block corner',
-        route: { name: 'Stalk Block', points: [{ x: 73, y: 65, type: 'snap' }, { x: 73, y: 55, type: 'block', label: 'BLOCK' }], isBlocking: true, color: '#10b981' },
+        route: { name: 'Stalk Block', points: [{ x: 76, y: 65, type: 'snap' }, { x: 76, y: 55, type: 'block', label: 'BLOCK' }], isBlocking: true, color: '#10b981' },
       },
       WR3: {
         id: 'WR3',
         label: 'WR3 (Bunch)',
         positionName: 'Bunch Receiver 3',
-        initialPos: { x: 81, y: 65 },
+        initialPos: { x: 84, y: 65 },
         roleDescription: 'Seal perimeter safety',
-        route: { name: 'Perimeter Seal', points: [{ x: 81, y: 65, type: 'snap' }, { x: 84, y: 54, type: 'block', label: 'SEAL' }], isBlocking: true, color: '#f59e0b' },
-      },
-      RB: {
-        id: 'RB',
-        label: 'RB',
-        positionName: 'Running Back',
-        initialPos: { x: 42, y: 75 },
-        roleDescription: 'Lead block around right edge',
-        route: { name: 'Lead Block', points: [{ x: 42, y: 75, type: 'snap' }, { x: 76, y: 68, type: 'stem' }, { x: 88, y: 52, type: 'block', label: 'LEAD' }], isBlocking: true, color: '#a855f7' },
+        route: { name: 'Perimeter Seal', points: [{ x: 84, y: 65, type: 'snap' }, { x: 87, y: 54, type: 'block', label: 'SEAL' }], isBlocking: true, color: '#f59e0b' },
       },
     },
   },
@@ -235,12 +257,12 @@ export const ONE_LINE_PLAYS: Play[] = [
     category: '1 LINE RUN',
     playType: 'RUN',
     direction: 'RIGHT',
-    formationName: '1-Line 4-Right Bunch',
+    formationName: '1-Line 4-Right Bunch (8v8 3-OL)',
     conceptName: 'Motion Sweep Right',
-    tags: ['1 Line', 'Motion Sweep', 'Perimeter Run'],
-    description: 'Pre-snap motion from left receiver across the formation for an outside perimeter sweep to the right.',
+    tags: ['1 Line', 'Motion Sweep', 'Perimeter Run', '3 O-Line', '8v8'],
+    description: 'Pre-snap motion from left receiver across the formation for an outside perimeter sweep to the right in 8v8 with 3 offensive linemen.',
     coachingPoints: ['Snap timed precisely as motion runner reaches QB shoulder.', 'Lead blocks on perimeter.'],
-    progressionReads: [{ order: 1, playerId: 'WR_MOTION', concept: 'Perimeter Sweep', cue: 'Follow RB lead block' }],
+    progressionReads: [{ order: 1, playerId: 'WR_MOTION', concept: 'Perimeter Sweep', cue: 'Follow perimeter blocks' }],
     qbDrop: 'QB Keep',
     players: {
       QB: {
@@ -254,10 +276,26 @@ export const ONE_LINE_PLAYS: Play[] = [
       C: {
         id: 'C',
         label: 'C',
-        positionName: 'Center',
+        positionName: 'Center (3 O-Line)',
         initialPos: { x: 50, y: 65 },
         roleDescription: 'Interior seal',
         route: { name: 'Seal Block', points: [{ x: 50, y: 65, type: 'snap' }, { x: 54, y: 60, type: 'block', label: 'SEAL' }], isBlocking: true },
+      },
+      LG: {
+        id: 'LG',
+        label: 'LG',
+        positionName: 'Left Guard (3 O-Line)',
+        initialPos: { x: 44, y: 65 },
+        roleDescription: 'Backside cutoff block',
+        route: { name: 'Cutoff Block', points: [{ x: 44, y: 65, type: 'snap' }, { x: 40, y: 58, type: 'block', label: 'BLOCK' }], isBlocking: true, color: '#f59e0b' },
+      },
+      RG: {
+        id: 'RG',
+        label: 'RG',
+        positionName: 'Right Guard (3 O-Line)',
+        initialPos: { x: 56, y: 65 },
+        roleDescription: 'Drive block right edge',
+        route: { name: 'Drive Block', points: [{ x: 56, y: 65, type: 'snap' }, { x: 62, y: 58, type: 'block', label: 'BLOCK' }], isBlocking: true, color: '#f59e0b' },
       },
       WR_MOTION: {
         id: 'WR_MOTION',
@@ -277,33 +315,25 @@ export const ONE_LINE_PLAYS: Play[] = [
         id: 'WR1',
         label: 'WR1',
         positionName: 'Bunch WR 1',
-        initialPos: { x: 65, y: 65 },
+        initialPos: { x: 68, y: 65 },
         roleDescription: 'Crack block',
-        route: { name: 'Crack Block', points: [{ x: 65, y: 65, type: 'snap' }, { x: 60, y: 56, type: 'block', label: 'BLOCK' }], isBlocking: true },
+        route: { name: 'Crack Block', points: [{ x: 68, y: 65, type: 'snap' }, { x: 64, y: 56, type: 'block', label: 'BLOCK' }], isBlocking: true },
       },
       WR2: {
         id: 'WR2',
         label: 'WR2',
         positionName: 'Bunch WR 2',
-        initialPos: { x: 73, y: 65 },
+        initialPos: { x: 76, y: 65 },
         roleDescription: 'Stalk block',
-        route: { name: 'Stalk Block', points: [{ x: 73, y: 65, type: 'snap' }, { x: 73, y: 55, type: 'block', label: 'BLOCK' }], isBlocking: true },
+        route: { name: 'Stalk Block', points: [{ x: 76, y: 65, type: 'snap' }, { x: 76, y: 55, type: 'block', label: 'BLOCK' }], isBlocking: true },
       },
       WR3: {
         id: 'WR3',
         label: 'WR3',
         positionName: 'Bunch WR 3',
-        initialPos: { x: 81, y: 65 },
+        initialPos: { x: 84, y: 65 },
         roleDescription: 'Perimeter seal',
-        route: { name: 'Perimeter Seal', points: [{ x: 81, y: 65, type: 'snap' }, { x: 84, y: 54, type: 'block', label: 'SEAL' }], isBlocking: true },
-      },
-      RB: {
-        id: 'RB',
-        label: 'RB',
-        positionName: 'Running Back',
-        initialPos: { x: 42, y: 75 },
-        roleDescription: 'Lead block on perimeter',
-        route: { name: 'Lead Block', points: [{ x: 42, y: 75, type: 'snap' }, { x: 78, y: 66, type: 'stem' }, { x: 88, y: 52, type: 'block', label: 'LEAD' }], isBlocking: true },
+        route: { name: 'Perimeter Seal', points: [{ x: 84, y: 65, type: 'snap' }, { x: 87, y: 54, type: 'block', label: 'SEAL' }], isBlocking: true },
       },
     },
   },
@@ -316,11 +346,11 @@ export const ONE_LINE_PLAYS: Play[] = [
     category: '1 LINE RUN',
     playType: 'RUN',
     direction: 'LEFT',
-    formationName: '1-Line 4-Right Bunch',
+    formationName: '1-Line 4-Right Bunch (8v8 3-OL)',
     conceptName: 'Motion Fake QB Boot / Sweep Left',
-    tags: ['1 Line', 'QB Sweep', 'Motion Fake', 'Counter Flow'],
-    description: 'Deceptive play where the motion man fakes taking the sweep to the right, while the Quarterback keeps and runs a sweep to the left.',
-    coachingPoints: ['Sell the rightward motion fake to draw defense flow right.', 'QB cuts back aggressively to the vacated left flat.'],
+    tags: ['1 Line', 'QB Sweep', 'Motion Fake', 'Counter Flow', '3 O-Line', '8v8'],
+    description: 'Deceptive 8v8 play with 3 O-Line where the motion man fakes taking the sweep to the right, while the Quarterback keeps and runs a sweep to the left.',
+    coachingPoints: ['Sell the rightward motion fake to draw defense flow right.', 'QB cuts back aggressively to the vacated left flat behind LG.'],
     progressionReads: [{ order: 1, playerId: 'QB', concept: 'QB Boot Sweep Left', cue: 'Attack vacated left boundary' }],
     qbDrop: 'QB Keep',
     players: {
@@ -340,10 +370,26 @@ export const ONE_LINE_PLAYS: Play[] = [
       C: {
         id: 'C',
         label: 'C',
-        positionName: 'Center',
+        positionName: 'Center (3 O-Line)',
         initialPos: { x: 50, y: 65 },
         roleDescription: 'Interior seal block left',
         route: { name: 'Seal Left', points: [{ x: 50, y: 65, type: 'snap' }, { x: 44, y: 60, type: 'block', label: 'SEAL' }], isBlocking: true },
+      },
+      LG: {
+        id: 'LG',
+        label: 'LG',
+        positionName: 'Left Guard (3 O-Line)',
+        initialPos: { x: 44, y: 65 },
+        roleDescription: 'Lead kickout block on left perimeter',
+        route: { name: 'Kickout Block Left', points: [{ x: 44, y: 65, type: 'snap' }, { x: 32, y: 68, type: 'stem' }, { x: 20, y: 52, type: 'block', label: 'LEAD' }], isBlocking: true, color: '#f59e0b' },
+      },
+      RG: {
+        id: 'RG',
+        label: 'RG',
+        positionName: 'Right Guard (3 O-Line)',
+        initialPos: { x: 56, y: 65 },
+        roleDescription: 'Cutoff block',
+        route: { name: 'Cutoff Block', points: [{ x: 56, y: 65, type: 'snap' }, { x: 52, y: 60, type: 'block', label: 'BLOCK' }], isBlocking: true, color: '#f59e0b' },
       },
       WR_MOTION: {
         id: 'WR_MOTION',
@@ -363,33 +409,25 @@ export const ONE_LINE_PLAYS: Play[] = [
         id: 'WR1',
         label: 'WR1',
         positionName: 'Bunch WR 1',
-        initialPos: { x: 65, y: 65 },
+        initialPos: { x: 68, y: 65 },
         roleDescription: 'Route / Stalk',
-        route: { name: 'Stalk Block', points: [{ x: 65, y: 65, type: 'snap' }, { x: 65, y: 55, type: 'block', label: 'BLOCK' }], isBlocking: true },
+        route: { name: 'Stalk Block', points: [{ x: 68, y: 65, type: 'snap' }, { x: 68, y: 55, type: 'block', label: 'BLOCK' }], isBlocking: true },
       },
       WR2: {
         id: 'WR2',
         label: 'WR2',
         positionName: 'Bunch WR 2',
-        initialPos: { x: 73, y: 65 },
+        initialPos: { x: 76, y: 65 },
         roleDescription: 'Stalk block',
-        route: { name: 'Stalk Block', points: [{ x: 73, y: 65, type: 'snap' }, { x: 73, y: 55, type: 'block', label: 'BLOCK' }], isBlocking: true },
+        route: { name: 'Stalk Block', points: [{ x: 76, y: 65, type: 'snap' }, { x: 76, y: 55, type: 'block', label: 'BLOCK' }], isBlocking: true },
       },
       WR3: {
         id: 'WR3',
         label: 'WR3',
         positionName: 'Bunch WR 3',
-        initialPos: { x: 81, y: 65 },
+        initialPos: { x: 84, y: 65 },
         roleDescription: 'Stalk block',
-        route: { name: 'Stalk Block', points: [{ x: 81, y: 65, type: 'snap' }, { x: 81, y: 55, type: 'block', label: 'BLOCK' }], isBlocking: true },
-      },
-      RB: {
-        id: 'RB',
-        label: 'RB',
-        positionName: 'Running Back',
-        initialPos: { x: 42, y: 75 },
-        roleDescription: 'Lead block out to the left for QB',
-        route: { name: 'Lead Block Left', points: [{ x: 42, y: 75, type: 'snap' }, { x: 26, y: 70, type: 'stem' }, { x: 16, y: 50, type: 'block', label: 'LEAD' }], isBlocking: true, color: '#f59e0b' },
+        route: { name: 'Stalk Block', points: [{ x: 84, y: 65, type: 'snap' }, { x: 84, y: 55, type: 'block', label: 'BLOCK' }], isBlocking: true },
       },
     },
   },

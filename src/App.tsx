@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, DefenseScheme, RosterPlayer, TokenDisplayMode } from './types';
+import { Play, DefenseScheme, RosterPlayer, TokenDisplayMode, DrillTrainingSession, TimestampedCoachingCue } from './types';
 import { ALL_PLAYBOOK_PLAYS, getPlayById } from './data/allPlays';
 import { DEFENSE_SCHEMES } from './data/defenseSchemes';
+import { createPlayFromDrill } from './data/drillPlayGenerator';
+import { PracticeDrill } from './data/drillDatabase';
 import {
   loadRosterFromStorage,
   saveRosterToStorage,
   loadTokenModeFromStorage,
   saveTokenModeToStorage,
+  loadTeamInfoFromStorage,
+  saveTeamInfoToStorage,
+  TeamInfo,
 } from './data/rosterData';
 import { detectConceptsForPlay } from './data/routeConceptsData';
 import { FieldBoard } from './components/FieldBoard';
@@ -23,6 +28,11 @@ import { DrillGeneratorModal } from './components/DrillGeneratorModal';
 import { PrintLayoutModal } from './components/PrintLayoutModal';
 import { RosterManagementModal } from './components/RosterManagementModal';
 import { CoachingTipsModal } from './components/CoachingTipsModal';
+import { GamePlanStatsModal } from './components/GamePlanStatsModal';
+import { DefensiveScoutModal } from './components/DefensiveScoutModal';
+import { FormationGalleryModal } from './components/FormationGalleryModal';
+import { getPlayAssignedCoverage, getDefenseSchemeById } from './utils/defensiveScoutStorage';
+import { getSavedFolders } from './utils/folderStorage';
 import {
   BookOpen,
   Languages,
@@ -30,6 +40,7 @@ import {
   Printer,
   Sparkles,
   ShieldAlert,
+  Shield,
   ChevronLeft,
   ChevronRight,
   Maximize2,
@@ -41,6 +52,8 @@ import {
   Users,
   GraduationCap,
   Tv,
+  BarChart3,
+  LayoutGrid,
 } from 'lucide-react';
 
 export default function App() {
@@ -53,6 +66,7 @@ export default function App() {
   // Roster & Jersey Numbers state
   const [roster, setRoster] = useState<RosterPlayer[]>(() => loadRosterFromStorage());
   const [tokenDisplayMode, setTokenDisplayMode] = useState<TokenDisplayMode>(() => loadTokenModeFromStorage());
+  const [teamInfo, setTeamInfo] = useState<TeamInfo>(() => loadTeamInfoFromStorage());
 
   // Animation timeline state
   const [progress, setProgress] = useState(0); // 0 to 1
@@ -65,7 +79,8 @@ export default function App() {
   const [showFullRoutes, setShowFullRoutes] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
   const [showZones, setShowZones] = useState(true);
-  const [fieldTheme, setFieldTheme] = useState<'turf' | 'tactical' | 'chalkboard'>('tactical');
+  const [showFieldGrid, setShowFieldGrid] = useState(false);
+  const [fieldTheme, setFieldTheme] = useState<'turf' | 'tactical' | 'chalkboard' | 'stadium-night'>('tactical');
 
   // Coaching tips & Video overlay state
   const [isCoachingTipsOpen, setIsCoachingTipsOpen] = useState(false);
@@ -86,12 +101,53 @@ export default function App() {
   const [isDrillsOpen, setIsDrillsOpen] = useState(false);
   const [isPrintLayoutOpen, setIsPrintLayoutOpen] = useState(false);
   const [isRosterOpen, setIsRosterOpen] = useState(false);
+  const [isGamePlanStatsOpen, setIsGamePlanStatsOpen] = useState(false);
+  const [isDefensiveScoutOpen, setIsDefensiveScoutOpen] = useState(false);
+  const [isFormationGalleryOpen, setIsFormationGalleryOpen] = useState(false);
+  const [appFolders, setAppFolders] = useState(() => getSavedFolders());
+
+  // Drill Training Session state & auto-loop
+  const [drillTraining, setDrillTraining] = useState<DrillTrainingSession | null>(null);
+  const [showDrillCones, setShowDrillCones] = useState(true);
+  const [savedPreDrillPlay, setSavedPreDrillPlay] = useState<Play | null>(null);
+  const [isAutoLoop, setIsAutoLoop] = useState(false);
+  const drillTrainingRef = useRef<DrillTrainingSession | null>(null);
+  drillTrainingRef.current = drillTraining;
+  const isAutoLoopRef = useRef(isAutoLoop);
+  isAutoLoopRef.current = isAutoLoop;
+  const resetCadenceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Listen to folder updates
+  useEffect(() => {
+    const handleFoldersUpdate = () => {
+      setAppFolders(getSavedFolders());
+    };
+    window.addEventListener('playbook_folders_updated', handleFoldersUpdate);
+    return () => window.removeEventListener('playbook_folders_updated', handleFoldersUpdate);
+  }, []);
+
+  // Centralized Play/Pause toggle
+  const handleTogglePlay = () => {
+    if (!isPlaying) {
+      if (progress >= 1) {
+        setProgress(0);
+      }
+      setIsPlaying(true);
+    } else {
+      setIsPlaying(false);
+    }
+  };
+
+  const handleResetAnimation = () => {
+    setIsPlaying(false);
+    setProgress(0);
+  };
 
   // Animation loop ref
   const animFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
 
-  // Play animation loop
+  // Play animation loop with auto-loop drill support
   useEffect(() => {
     if (!isPlaying) {
       if (animFrameRef.current) {
@@ -112,6 +168,52 @@ export default function App() {
       setProgress((prev) => {
         const next = prev + deltaTime / duration;
         if (next >= 1) {
+          const dt = drillTrainingRef.current;
+          const shouldLoop = (dt && dt.isAutoLoop) || isAutoLoopRef.current;
+
+          if (shouldLoop) {
+            // Check if drill reached target reps
+            if (dt && dt.targetReps > 0 && dt.currentRep >= dt.targetReps) {
+              setIsPlaying(false);
+              return 1;
+            }
+
+            // Temporarily cancel animation frame while in cadence transition
+            if (animFrameRef.current) {
+              cancelAnimationFrame(animFrameRef.current);
+              animFrameRef.current = null;
+            }
+
+            if (dt) {
+              setDrillTraining((prevDt) =>
+                prevDt
+                  ? {
+                      ...prevDt,
+                      currentRep: prevDt.currentRep + 1,
+                      isResettingRep: true,
+                    }
+                  : null
+              );
+            }
+
+            const cadenceDelay = dt?.cadenceDelayMs || 1000;
+
+            if (resetCadenceTimeoutRef.current) {
+              clearTimeout(resetCadenceTimeoutRef.current);
+            }
+
+            resetCadenceTimeoutRef.current = setTimeout(() => {
+              setProgress(0);
+              lastTimeRef.current = performance.now();
+              if (dt) {
+                setDrillTraining((prevDt) => (prevDt ? { ...prevDt, isResettingRep: false } : null));
+              }
+              animFrameRef.current = requestAnimationFrame(updateLoop);
+            }, cadenceDelay);
+
+            return 1;
+          }
+
           setIsPlaying(false);
           return 1;
         }
@@ -127,15 +229,112 @@ export default function App() {
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
       }
+      if (resetCadenceTimeoutRef.current) {
+        clearTimeout(resetCadenceTimeoutRef.current);
+      }
     };
   }, [isPlaying, speed]);
 
-  // When selected play changes, reset animation
+  // Launch drill directly on FieldBoard
+  const handlePlayDrillOnField = (
+    drill: PracticeDrill,
+    options?: { targetReps?: number; isAutoLoop?: boolean; initialSpeed?: number }
+  ) => {
+    if (!drillTraining) {
+      setSavedPreDrillPlay(selectedPlay);
+    }
+
+    const drillPlay = createPlayFromDrill(drill, selectedPlay);
+    setSelectedPlay(drillPlay);
+
+    const targetReps = options?.targetReps !== undefined ? options.targetReps : (drillPlay.drillData?.repTarget || 6);
+    const loopEnabled = options?.isAutoLoop !== undefined ? options.isAutoLoop : true;
+
+    setDrillTraining({
+      drillId: drill.id,
+      drillName: drill.name,
+      drillCategory: drill.category,
+      currentRep: 1,
+      targetReps,
+      isAutoLoop: loopEnabled,
+      cadenceDelayMs: 1000,
+      isResettingRep: false,
+      coachingCue: drill.receiverCoachingKey || drill.qbCoachingKey || drill.objective,
+      cones: drillPlay.drillData?.cones || [],
+    });
+
+    if (options?.initialSpeed) {
+      setSpeed(options.initialSpeed);
+    }
+
+    setProgress(0);
+    setIsPlaying(true);
+    setIsDrillsOpen(false);
+  };
+
+  const handleExitDrillTraining = () => {
+    if (resetCadenceTimeoutRef.current) {
+      clearTimeout(resetCadenceTimeoutRef.current);
+    }
+    setDrillTraining(null);
+    if (savedPreDrillPlay) {
+      setSelectedPlay(savedPreDrillPlay);
+      setSavedPreDrillPlay(null);
+    }
+    setIsPlaying(false);
+    setProgress(0);
+  };
+
+  const handleToggleDrillAutoLoop = () => {
+    setDrillTraining((prev) => (prev ? { ...prev, isAutoLoop: !prev.isAutoLoop } : null));
+    setIsAutoLoop((prev) => !prev);
+  };
+
+  const handleIncrementDrillRep = () => {
+    setDrillTraining((prev) => (prev ? { ...prev, currentRep: prev.currentRep + 1 } : null));
+  };
+
+  const handleDecrementDrillRep = () => {
+    setDrillTraining((prev) => (prev ? { ...prev, currentRep: Math.max(1, prev.currentRep - 1) } : null));
+  };
+
+  const handleResetDrillReps = () => {
+    setDrillTraining((prev) => (prev ? { ...prev, currentRep: 1, isResettingRep: false } : null));
+    setProgress(0);
+  };
+
+  const handleChangeDrillTargetReps = (reps: number) => {
+    setDrillTraining((prev) => (prev ? { ...prev, targetReps: reps } : null));
+  };
+
+  const handleChangeDrillCadenceDelay = (delayMs: number) => {
+    setDrillTraining((prev) => (prev ? { ...prev, cadenceDelayMs: delayMs } : null));
+  };
+
+  // When selected play changes, reset animation and load assigned defense if present
   const handleSelectPlay = (play: Play) => {
     setSelectedPlay(play);
     setProgress(0);
     setIsPlaying(false);
     setSelectedPlayerId(null);
+
+    // If play has an assigned defensive coverage, load it
+    const assignedScout = getPlayAssignedCoverage(play.id);
+    if (assignedScout?.primarySchemeId) {
+      const scheme = getDefenseSchemeById(assignedScout.primarySchemeId);
+      if (scheme) {
+        setDefenseScheme(scheme);
+      }
+    }
+  };
+
+  // Apply defensive scheme to active field view with optional automatic overlay activation
+  const handleApplyDefenseScheme = (scheme: DefenseScheme, enableOverlay: boolean = true) => {
+    setDefenseScheme(scheme);
+    if (enableOverlay) {
+      setShowDefense(true);
+      setShowZones(true);
+    }
   };
 
   // Save newly created custom whiteboard play
@@ -156,13 +355,34 @@ export default function App() {
     saveTokenModeToStorage(mode);
   };
 
+  // Update Team Info & Persist
+  const handleUpdateTeamInfo = (newInfo: TeamInfo) => {
+    setTeamInfo(newInfo);
+    saveTeamInfoToStorage(newInfo);
+  };
+
   const handleToggleTokenMode = () => {
     const modes: TokenDisplayMode[] = ['jersey', 'position', 'both', 'name'];
     const nextIdx = (modes.indexOf(tokenDisplayMode) + 1) % modes.length;
     handleUpdateTokenMode(modes[nextIdx]);
   };
 
-  // Keyboard shortcuts (Space to toggle play, Left/Right arrows to scrub)
+  // Update Coaching Cues & Persist
+  const handleUpdatePlayCues = (updatedCues: TimestampedCoachingCue[]) => {
+    setSelectedPlay((prev) => {
+      const updated: Play = {
+        ...prev,
+        coachingCues: updatedCues,
+      };
+      const idx = ALL_PLAYBOOK_PLAYS.findIndex((p) => p.id === updated.id);
+      if (idx !== -1) {
+        ALL_PLAYBOOK_PLAYS[idx] = updated;
+      }
+      return updated;
+    });
+  };
+
+  // Keyboard shortcuts (Space to toggle play, Left/Right arrows to scrub, R to reset)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['input', 'textarea', 'select'].includes((e.target as HTMLElement).tagName.toLowerCase())) {
@@ -170,23 +390,24 @@ export default function App() {
       }
       if (e.code === 'Space') {
         e.preventDefault();
-        setIsPlaying((p) => !p);
+        handleTogglePlay();
       } else if (e.code === 'ArrowRight') {
         e.preventDefault();
+        setIsPlaying(false);
         setProgress((p) => Math.min(1, p + 0.05));
       } else if (e.code === 'ArrowLeft') {
         e.preventDefault();
+        setIsPlaying(false);
         setProgress((p) => Math.max(0, p - 0.05));
       } else if (e.code === 'KeyR') {
         e.preventDefault();
-        setProgress(0);
-        setIsPlaying(false);
+        handleResetAnimation();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isPlaying, progress]);
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
@@ -195,20 +416,26 @@ export default function App() {
         <div className="max-w-[1720px] mx-auto flex flex-wrap items-center justify-between gap-3">
           {/* Logo & Playbook Title */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
-              <span className="font-mono font-black text-lg tracking-tighter">7v7</span>
+            <div className="relative group cursor-pointer shrink-0">
+              <img
+                src="/aalto-predators-logo.svg"
+                alt="Aalto Predators Helmet Logo"
+                className="w-12 h-12 rounded-xl object-contain drop-shadow-md border-2 border-red-600/40 bg-black p-0.5 transition-transform group-hover:scale-105"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-black tracking-tight font-display text-slate-900">
-                  GRIDIRON 7v7 PLAYBOOK
+                <h1 className="text-lg sm:text-xl font-black tracking-tight font-display text-slate-900">
+                  AALTO PREDATORS 8v8 PLAYBOOK
                 </h1>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-100 text-emerald-700 border border-emerald-300">
-                  1.5X STADIUM VIEW
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-red-100 text-red-700 border border-red-300 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
+                  PREDATORS
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-mono">
-                {ALL_PLAYBOOK_PLAYS.length} Diagrammed Plays • Vector Route Engine
+                Aalto University American Football • Finland University League • {ALL_PLAYBOOK_PLAYS.length} Plays
               </p>
             </div>
           </div>
@@ -216,16 +443,43 @@ export default function App() {
           {/* Top Quick Utility Buttons */}
           <div className="flex items-center flex-wrap gap-2 text-xs">
             <button
+              id="top-formation-gallery-btn"
+              onClick={() => setIsFormationGalleryOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold border border-cyan-500 flex items-center gap-1.5 transition-all shadow-sm shadow-cyan-600/20 active:scale-95 cursor-pointer"
+              title="Open 8v8 Formation Gallery & Personnel Lab (Empty, Trips, Spread, 2-Line, Split Backs)"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Formation Gallery</span>
+              <span className="sm:hidden">Formations</span>
+            </button>
+
+            <button
+              id="top-defense-scout-btn"
+              onClick={() => setIsDefensiveScoutOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold border border-rose-500 flex items-center gap-1.5 transition-all shadow-sm shadow-rose-600/20 active:scale-95 cursor-pointer"
+              title="Open Defensive Scout & Coverage Lab (Cover 0-6, Bracket, Match)"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Defensive Scout</span>
+              <span className="sm:hidden">Defense</span>
+              {defenseScheme && (
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-rose-800 text-rose-100">
+                  {defenseScheme.shortName}
+                </span>
+              )}
+            </button>
+
+            <button
               id="top-roster-management-btn"
               onClick={() => setIsRosterOpen(true)}
               className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold border border-blue-500 flex items-center gap-1.5 transition-all shadow-sm shadow-blue-600/20 active:scale-95 cursor-pointer"
-              title="Manage 7v7 Roster, Depth Chart & Player Jersey Numbers"
+              title="Manage 8v8 Roster, Depth Chart & Player Jersey Numbers"
             >
               <Users className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Roster &amp; Jerseys</span>
               <span className="sm:hidden">Roster</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-blue-800 text-blue-100">
-                {roster.filter((p) => p.assignedSlot).length}/7
+                {roster.filter((p) => p.assignedSlot).length}/8
               </span>
             </button>
 
@@ -296,6 +550,17 @@ export default function App() {
             </button>
 
             <button
+              id="top-game-plan-stats-btn"
+              onClick={() => setIsGamePlanStatsOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100/90 text-purple-800 font-bold border border-purple-200 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
+              title="Visualize Usage Statistics for Game Plan Plays (Bar Chart)"
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-purple-600" />
+              <span className="hidden sm:inline">Game Plan Stats</span>
+              <span className="sm:hidden">Stats</span>
+            </button>
+
+            <button
               id="top-print-layout-btn"
               onClick={() => setIsPrintLayoutOpen(true)}
               className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100/90 text-blue-800 font-bold border border-blue-200 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
@@ -336,11 +601,16 @@ export default function App() {
             showFullRoutes={showFullRoutes}
             showLabels={showLabels}
             showZones={showZones}
+            showFieldGrid={showFieldGrid}
+            onToggleFieldGrid={() => setShowFieldGrid(!showFieldGrid)}
             selectedPlayerId={selectedPlayerId}
             onSelectPlayer={setSelectedPlayerId}
             fieldTheme={fieldTheme}
-            onTogglePlay={() => setIsPlaying(!isPlaying)}
-            onSeek={(p) => setProgress(p)}
+            onTogglePlay={handleTogglePlay}
+            onSeek={(p) => {
+              setIsPlaying(false);
+              setProgress(p);
+            }}
             onOpenWhiteboard={() => setIsWhiteboardOpen(true)}
             roster={roster}
             tokenDisplayMode={tokenDisplayMode}
@@ -353,6 +623,17 @@ export default function App() {
             onSelectRouteConceptId={(id) => setActiveRouteConceptId(id)}
             boardScale={boardScale}
             onToggleBoardScale={setBoardScale}
+            onOpenFormationGallery={() => setIsFormationGalleryOpen(true)}
+            drillTrainingState={drillTraining}
+            onToggleDrillAutoLoop={handleToggleDrillAutoLoop}
+            onIncrementDrillRep={handleIncrementDrillRep}
+            onDecrementDrillRep={handleDecrementDrillRep}
+            onResetDrillReps={handleResetDrillReps}
+            onChangeDrillTargetReps={handleChangeDrillTargetReps}
+            onChangeDrillCadenceDelay={handleChangeDrillCadenceDelay}
+            onExitDrillTraining={handleExitDrillTraining}
+            showDrillCones={showDrillCones}
+            onToggleShowDrillCones={() => setShowDrillCones(!showDrillCones)}
           />
 
           {/* Interactive Animation Controller */}
@@ -373,8 +654,15 @@ export default function App() {
             setShowLabels={setShowLabels}
             showZones={showZones}
             setShowZones={setShowZones}
+            showFieldGrid={showFieldGrid}
+            setShowFieldGrid={setShowFieldGrid}
             fieldTheme={fieldTheme}
             setFieldTheme={setFieldTheme}
+            isAutoLoop={drillTraining ? drillTraining.isAutoLoop : isAutoLoop}
+            onToggleAutoLoop={handleToggleDrillAutoLoop}
+            drillTraining={drillTraining}
+            onExitDrill={handleExitDrillTraining}
+            onOpenDefensiveScout={() => setIsDefensiveScoutOpen(true)}
           />
 
           {/* Detailed Tactical Progression & Assignment Analysis */}
@@ -390,6 +678,13 @@ export default function App() {
             onOpenCoachingTips={() => setIsCoachingTipsOpen(true)}
             onToggleCoachingOverlay={() => setIsCoachingOverlayOpen(!isCoachingOverlayOpen)}
             isCoachingOverlayOpen={isCoachingOverlayOpen}
+            currentProgress={progress}
+            isPlaying={isPlaying}
+            onSeekProgress={setProgress}
+            onTogglePlay={handleTogglePlay}
+            onUpdatePlayCues={handleUpdatePlayCues}
+            onOpenDefensiveScout={() => setIsDefensiveScoutOpen(true)}
+            activeDefenseScheme={defenseScheme}
           />
         </div>
 
@@ -398,6 +693,8 @@ export default function App() {
           <PlaySelector
             selectedPlay={selectedPlay}
             onSelectPlay={handleSelectPlay}
+            onDuplicatePlay={handleSaveCustomPlay}
+            onOpenFormationGallery={() => setIsFormationGalleryOpen(true)}
           />
 
           {/* Quick Shortcuts & Playbook Quick Facts */}
@@ -430,7 +727,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="mt-auto border-t border-slate-200 bg-white py-4 text-center text-xs text-slate-500 font-mono">
-        Official 7v7 Flag &amp; Touch Football Playbook Engine • 100% Client-Side Vector Graphics • Offline Ready
+        Official Aalto Predators 8v8 Playbook Engine • Aalto University American Football (Finland University League) • Offline Ready
       </footer>
 
       {/* Modals */}
@@ -471,6 +768,7 @@ export default function App() {
         isOpen={isDrillsOpen}
         onClose={() => setIsDrillsOpen(false)}
         currentPlay={selectedPlay}
+        onPlayDrillOnField={handlePlayDrillOnField}
       />
 
       <PrintLayoutModal
@@ -486,7 +784,10 @@ export default function App() {
         onClose={() => setIsRosterOpen(false)}
         roster={roster}
         onUpdateRoster={handleUpdateRoster}
+        teamInfo={teamInfo}
+        onUpdateTeamInfo={handleUpdateTeamInfo}
         tokenDisplayMode={tokenDisplayMode}
+        onUpdateTokenMode={handleUpdateTokenMode}
         onUpdateTokenDisplayMode={handleUpdateTokenMode}
       />
 
@@ -499,6 +800,34 @@ export default function App() {
         onToggleOverlay={(val) => setIsCoachingOverlayOpen(val)}
         selectedConceptId={activeRouteConceptId}
         onSelectConceptId={(id) => setActiveRouteConceptId(id)}
+      />
+
+      <GamePlanStatsModal
+        isOpen={isGamePlanStatsOpen}
+        onClose={() => setIsGamePlanStatsOpen(false)}
+        folders={appFolders}
+        onSelectPlay={(play) => setSelectedPlay(play)}
+      />
+
+      <DefensiveScoutModal
+        isOpen={isDefensiveScoutOpen}
+        onClose={() => setIsDefensiveScoutOpen(false)}
+        currentPlay={selectedPlay}
+        activeDefenseScheme={defenseScheme}
+        onApplyDefenseToField={handleApplyDefenseScheme}
+        onUpdatePlayDefense={(scoutData) => {
+          const scheme = getDefenseSchemeById(scoutData.primarySchemeId);
+          if (scheme) {
+            handleApplyDefenseScheme(scheme, true);
+          }
+        }}
+      />
+
+      <FormationGalleryModal
+        isOpen={isFormationGalleryOpen}
+        onClose={() => setIsFormationGalleryOpen(false)}
+        onSelectPlay={(play) => setSelectedPlay(play)}
+        currentSelectedPlay={selectedPlay}
       />
     </div>
   );

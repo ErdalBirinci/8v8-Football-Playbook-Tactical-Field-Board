@@ -16,14 +16,14 @@ function createTwinsRunPlay(
   const sideLabel = isRight ? 'Right' : 'Left';
   const code = `${playNumber}. TWINS ${dir} ${playCodeSuffix}`;
 
-  // Positions in 2x2 Twins:
-  // Left: X at 16, H at 30
-  // Center: C at 50, QB at 50 (Shotgun), RB at (isRight ? 42 : 58)
-  // Right: Y at 70, Z at 84
-  const xX = 16;
-  const hX = 30;
-  const yX = 70;
-  const zX = 84;
+  // 8v8 Twins Alignment with 3 O-Line (LG, C, RG) and RB:
+  // Line of Scrimmage: LG at 44, C at 50, RG at 56
+  // Backfield: QB at 50, RB at (isRight ? 42 : 58)
+  // Left: X at 14 (WR), H at 28 (Slot)
+  // Right: Z at 86 (WR)
+  const xX = 14;
+  const hX = 28;
+  const zX = 86;
   const rbX = isRight ? 42 : 58;
 
   let rbPoints: RoutePoint[] = [{ x: rbX, y: 75, type: 'snap' }];
@@ -90,17 +90,17 @@ function createTwinsRunPlay(
     category: 'TWINS RUN',
     playType: runScheme === 'SCREEN' ? 'SCREEN' : 'RUN',
     direction: dir,
-    formationName: `Twins ${sideLabel} (2x2 Spread)`,
+    formationName: `Twins ${sideLabel} (8v8 3-OL Run)`,
     conceptName: `${englishAction} (${runnerType} Ball Carrier)`,
-    tags: ['Twins', '2x2', 'Run Play', `${runnerType} Run`],
-    description: `7v7 Twins ${sideLabel} 2x2 run play executing ${englishAction}. Balanced wide receivers spread the defense to open run alleys.`,
+    tags: ['Twins', 'Run Play', `${runnerType} Run`, '3 O-Line', '8v8'],
+    description: `8v8 Twins ${sideLabel} run play executing ${englishAction}. Powered by a 3-man offensive line front (LG, C, RG) with perimeter receiver stalk blocks.`,
     coachingPoints: [
-      `Ball Carrier: ${runnerType}. Attack the designated perimeter/gap decisively.`,
-      hasMotion ? `Pre-snap motion draws defensive eyes and reveals man/zone keys.` : `Direct execution out of 2x2.`,
+      `Ball Carrier: ${runnerType}. Attack the designated perimeter/gap decisively behind 3 O-Line blocks.`,
+      `3 O-Line: Guards and Center establish interior leverage and gap seal.`,
       `Perimeter receivers lock onto cornerbacks and safeties with aggressive stalk blocks.`,
     ],
     progressionReads: [
-      { order: 1, playerId: runnerType === 'RB' ? 'RB' : (runnerType === 'QB' ? 'QB' : 'WR_MOTION'), concept: `Primary Run Scheme (${runScheme})`, cue: 'Read lead block and edge leverage' },
+      { order: 1, playerId: runnerType === 'RB' ? 'RB' : 'QB', concept: `Primary Run Scheme (${runScheme})`, cue: 'Read lead block and edge leverage' },
     ],
     qbDrop: 'QB Keep',
     players: {
@@ -121,12 +121,38 @@ function createTwinsRunPlay(
       C: {
         id: 'C',
         label: 'C',
-        positionName: 'Center',
+        positionName: 'Center (3 O-Line)',
         initialPos: { x: 50, y: 65 },
         roleDescription: 'Snap ball and execute run block',
         route: {
           name: 'Interior Seal Block',
           points: [{ x: 50, y: 65, type: 'snap' }, { x: runScheme.includes('LEFT') ? 46 : 54, y: 60, type: 'block', label: 'SEAL' }],
+          isBlocking: true,
+          color: '#f59e0b',
+        },
+      },
+      LG: {
+        id: 'LG',
+        label: 'LG',
+        positionName: 'Left Guard (3 O-Line)',
+        initialPos: { x: 44, y: 65 },
+        roleDescription: runScheme.includes('LEFT') ? 'Lead drive block left gap' : 'Cutoff block',
+        route: {
+          name: runScheme.includes('LEFT') ? 'Drive Block' : 'Cutoff Block',
+          points: [{ x: 44, y: 65, type: 'snap' }, { x: runScheme.includes('LEFT') ? 40 : 42, y: 58, type: 'block', label: 'BLOCK' }],
+          isBlocking: true,
+          color: '#f59e0b',
+        },
+      },
+      RG: {
+        id: 'RG',
+        label: 'RG',
+        positionName: 'Right Guard (3 O-Line)',
+        initialPos: { x: 56, y: 65 },
+        roleDescription: runScheme.includes('RIGHT') ? 'Lead drive block right gap' : 'Cutoff block',
+        route: {
+          name: runScheme.includes('RIGHT') ? 'Drive Block' : 'Cutoff Block',
+          points: [{ x: 56, y: 65, type: 'snap' }, { x: runScheme.includes('RIGHT') ? 60 : 58, y: 58, type: 'block', label: 'BLOCK' }],
           isBlocking: true,
           color: '#f59e0b',
         },
@@ -169,19 +195,6 @@ function createTwinsRunPlay(
           points: [{ x: hX, y: 66, type: 'snap' }, { x: hX, y: 56, type: 'block', label: 'BLOCK' }],
           isBlocking: true,
           color: '#10b981',
-        },
-      },
-      Y: {
-        id: 'Y',
-        label: 'Y (Slot-R)',
-        positionName: 'Inside Right Slot',
-        initialPos: { x: yX, y: 66 },
-        roleDescription: 'Stalk block nickel defender',
-        route: {
-          name: 'Stalk Block',
-          points: [{ x: yX, y: 66, type: 'snap' }, { x: yX, y: 56, type: 'block', label: 'BLOCK' }],
-          isBlocking: true,
-          color: '#f59e0b',
         },
       },
       Z: {

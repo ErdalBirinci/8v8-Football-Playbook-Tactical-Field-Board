@@ -1,6 +1,6 @@
 {
-  "name": "7v7 Football Playbook & Tactical Field Board",
-  "description": "Interactive 7-on-7 American football playbook diagramming system, route tree engine, and animated field tactical board.",
+  "name": "Aalto Predators 8v8 Playbook",
+  "description": "Official Aalto Predators 8-on-8 football playbook diagramming system with 3 Offensive Linemen (LG, C, RG) and 4 Wide Receivers for the Finland University League, animated tactical field board, route tree engine, and practice drill generator.",
   "requestFramePermissions": [],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"

@@ -47,7 +47,19 @@ export const PlaybookQuizModal: React.FC<PlaybookQuizModalProps> = ({
         explanation: 'In the Trips 3-digit naming sequence (WR1, SR2, SR1), outside WR Z runs 1 (Flat), Y runs 7 (Corner), and inside H runs 8 (Post).',
       },
       {
-        question: 'In standard 7v7 route numbering, what is Route 7 (Corner / Flag)?',
+        question: 'In the Finland University League 8v8 format, what is the core structural difference from 7v7?',
+        category: '8v8 University League Rules',
+        options: [
+          'Addition of a 4th Wide Receiver (+1 WR: W Inside Slot) making 8 players total',
+          'Two fullbacks added behind the quarterback',
+          'Fields are shortened to 30 yards with 3 downs only',
+          'Only running plays are permitted on first down',
+        ],
+        correctIndex: 0,
+        explanation: 'In the Finnish University League, 8v8 adds an extra Wide Receiver (+1 WR, W Inside Slot) to create high-powered 4-receiver route distributions.',
+      },
+      {
+        question: 'In standard 8v8 route numbering, what is Route 7 (Corner / Flag)?',
         category: 'Route Tree / Heittoreitit',
         options: [
           'Dig / In (10-12 yds square cut)',
@@ -59,7 +71,7 @@ export const PlaybookQuizModal: React.FC<PlaybookQuizModalProps> = ({
         explanation: 'Route 7 is the Corner (Flag) route, breaking at 10-12 yards at a 45-degree angle toward the back corner of the endzone.',
       },
       {
-        question: 'What is "Heittosuojaus (Pass Protection)" in 7v7 offense?',
+        question: 'What is "Heittosuojaus (Pass Protection)" in 8v8 offense?',
         category: 'Blocking & Protection',
         options: [
           'Center and RB blocking to seal rushers and keep the QB pocket clean',
@@ -80,17 +92,17 @@ export const PlaybookQuizModal: React.FC<PlaybookQuizModalProps> = ({
           'All receivers stacked in single file line',
         ],
         correctIndex: 0,
-        explanation: 'Trips formation floods 3 receivers to one side of the formation with 1 isolated receiver on the backside.',
+        explanation: 'Trips formation floods 3 receivers to one side of the formation with isolated receivers on the backside.',
       },
       {
-        question: 'In 7v7 defense, which coverage divides deep field responsibilities between 2 safeties (each covering a deep half)?',
+        question: 'In 8v8 defense, which coverage divides deep field responsibilities between 2 safeties (each covering a deep half)?',
         category: 'Defensive Schemes / Aluepuolustus',
         options: ['Cover 0 (Pure Man)', 'Cover 1 (Single High)', 'Cover 2 Zone (Kahden syvän takamiehen aluepuolustus)', 'Cover 3 Deep Thirds'],
         correctIndex: 2,
-        explanation: 'Cover 2 features two deep safeties defending deep halves, with 5 underneath defenders in flat and hook-curl zones.',
+        explanation: 'Cover 2 features two deep safeties defending deep halves, with underneath defenders in flat and hook-curl zones.',
       },
       {
-        question: 'What is a "Sweep (Sivurajajuoksu / Ulkokiertojuoksu)" in 7v7 run concepts?',
+        question: 'What is a "Sweep (Sivurajajuoksu / Ulkokiertojuoksu)" in 8v8 run concepts?',
         category: 'Run Game / Juoksupeli',
         options: [
           'An outside perimeter run stretching wide toward the sideline before turning upfield',
@@ -102,16 +114,16 @@ export const PlaybookQuizModal: React.FC<PlaybookQuizModalProps> = ({
         explanation: 'A Sweep stretches the perimeter with lateral speed toward the sideline before cutting upfield.',
       },
       {
-        question: 'What does "Empty Backfield (Tyhjä takakenttä)" signify?',
+        question: 'What does "Empty Backfield (Tyhjä takakenttä)" signify in 8v8?',
         category: 'Formations / Muodostelmat',
         options: [
-          'No running backs in the backfield; 5 eligible receivers spread out wide',
+          'No running backs in the backfield; 6 eligible receivers spread out wide (+1 WR)',
           'Defense playing with no safeties in deep coverage',
           'Only one receiver on the line of scrimmage',
           'Direct center snap under center with full house backfield',
         ],
         correctIndex: 0,
-        explanation: 'Empty Backfield spreads 5 receivers across the line with zero runners behind the QB.',
+        explanation: 'In 8v8 Empty Backfield, 6 eligible receivers spread across the line with zero runners behind the QB.',
       },
     ];
 
@@ -168,10 +180,10 @@ export const PlaybookQuizModal: React.FC<PlaybookQuizModalProps> = ({
             </div>
             <div>
               <h3 className="text-lg font-black text-slate-900 font-display">
-                7v7 Playbook &amp; Terminology Quiz
+                8v8 Playbook &amp; Terminology Quiz
               </h3>
               <p className="text-xs text-slate-500">
-                Test your mastery of routes, reads, formations &amp; Finnish-English terms
+                Test your mastery of 8v8 routes, reads, formations &amp; Finnish-English terms
               </p>
             </div>
           </div>
@@ -278,7 +290,7 @@ export const PlaybookQuizModal: React.FC<PlaybookQuizModalProps> = ({
               </h3>
               <p className="text-xs text-slate-500 mt-1">
                 {score === questions.length
-                  ? 'Outstanding! You have complete command of 7v7 formations, routes, and terminology.'
+                  ? 'Outstanding! You have complete command of 8v8 formations, routes, and terminology.'
                   : score >= questions.length * 0.7
                   ? 'Great job! Strong tactical awareness on routes and assignments.'
                   : 'Review the Route Tree and EN-FI Glossary to sharpen your game-day execution!'}

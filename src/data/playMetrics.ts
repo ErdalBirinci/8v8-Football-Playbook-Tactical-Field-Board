@@ -21,7 +21,7 @@ export interface PlayRadarProfileData {
 }
 
 /**
- * Calculates effectiveness metrics across key categories for a 7v7 football play:
+ * Calculates effectiveness metrics across key categories for an 8v8 football play:
  * - Speed (Quick game, release timing, snap-to-throw rhythm)
  * - Route Complexity (Tree layering, read progression depth, motion)
  * - Vertical Threat (Deep boundary & seam stretching, y-depth pressure)

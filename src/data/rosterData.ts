@@ -1,8 +1,8 @@
 import { RosterPlayer } from '../types';
 
-export const LOCAL_STORAGE_ROSTER_KEY = 'gridiron_7v7_team_roster';
-export const LOCAL_STORAGE_TOKEN_MODE_KEY = 'gridiron_7v7_token_mode';
-export const LOCAL_STORAGE_TEAM_INFO_KEY = 'gridiron_7v7_team_info';
+export const LOCAL_STORAGE_ROSTER_KEY = 'gridiron_8v8_team_roster_3ol';
+export const LOCAL_STORAGE_TOKEN_MODE_KEY = 'gridiron_8v8_token_mode';
+export const LOCAL_STORAGE_TEAM_INFO_KEY = 'gridiron_8v8_team_info';
 
 export interface TeamInfo {
   teamName: string;
@@ -13,22 +13,23 @@ export interface TeamInfo {
 }
 
 export const DEFAULT_TEAM_INFO: TeamInfo = {
-  teamName: 'Apex 7v7 All-Stars',
-  headCoach: 'Coach Miller',
-  offensiveCoordinator: 'Coach Reynolds',
-  primaryColor: '#2563eb',
-  secondaryColor: '#f59e0b',
+  teamName: 'Aalto Predators',
+  headCoach: 'Coach Predators',
+  offensiveCoordinator: 'Coach Offense',
+  primaryColor: '#E31B23',
+  secondaryColor: '#FFF8E7',
 };
 
-// 7 Offensive Field Slots standard for 7v7 football
+// 8 Offensive Field Slots standard for 8v8 football with 3 O-Line (Finland University League)
 export const OFFENSIVE_SLOTS: { id: string; name: string; shortDesc: string; recommendedPos: string[] }[] = [
   { id: 'QB', name: 'Quarterback', shortDesc: 'Field General & Distributor', recommendedPos: ['QB'] },
-  { id: 'C', name: 'Center / Snapper', shortDesc: 'Snapper & Intermediate Outlet', recommendedPos: ['C', 'TE', 'WR'] },
+  { id: 'C', name: 'Center / Snapper (3 O-Line)', shortDesc: 'Interior Pocket Anchor & Snapper', recommendedPos: ['C', 'OL'] },
+  { id: 'LG', name: 'Left Guard (3 O-Line)', shortDesc: 'Left Pocket Pass Pro & Pull Specialist', recommendedPos: ['LG', 'OL', 'OT', 'G'] },
+  { id: 'RG', name: 'Right Guard (3 O-Line)', shortDesc: 'Right Pocket Pass Pro & Drive Blocker', recommendedPos: ['RG', 'OL', 'OT', 'G'] },
   { id: 'X', name: 'Outside Receiver (X / Solo)', shortDesc: 'Boundary / Iso Deep Threat', recommendedPos: ['WR'] },
   { id: 'Z', name: 'Outside Receiver (Z / Flanker)', shortDesc: 'Field / Motion Receiver', recommendedPos: ['WR', 'SLOT'] },
-  { id: 'H', name: 'Slot Receiver (H)', shortDesc: 'Inside Option / Whip Specialist', recommendedPos: ['SLOT', 'WR', 'RB'] },
-  { id: 'Y', name: 'Slot Receiver / TE (Y)', shortDesc: 'Seam / Crosser / Big Body Target', recommendedPos: ['SLOT', 'TE', 'WR'] },
-  { id: 'RB', name: 'Running Back / HB', shortDesc: 'Backfield Matchup & Checkdown', recommendedPos: ['RB', 'ATH'] },
+  { id: 'Y', name: 'Slot Receiver / TE (Y)', shortDesc: 'Seam / Crosser / Mismatch Target', recommendedPos: ['TE', 'SLOT', 'WR'] },
+  { id: 'RB', name: 'Running Back / HB', shortDesc: 'Ball Carrier, Blitz Pickup & Checkdown', recommendedPos: ['RB', 'ATH'] },
 ];
 
 export const DEFAULT_ROSTER: RosterPlayer[] = [
@@ -41,7 +42,7 @@ export const DEFAULT_ROSTER: RosterPlayer[] = [
     status: 'starter',
     speedRating: 88,
     handsRating: 95,
-    notes: 'Elite field vision, sidearm releases, deep ball precision on 8 & 9 routes.',
+    notes: 'Elite field vision, sidearm releases, deep ball precision behind the 3 O-Line pocket.',
     avatarColor: '#dc2626',
   },
   {
@@ -53,7 +54,31 @@ export const DEFAULT_ROSTER: RosterPlayer[] = [
     status: 'starter',
     speedRating: 84,
     handsRating: 88,
-    notes: 'Fast shotgun snap release, reliable 5-yard delayed sit route.',
+    notes: '3 O-Line Anchor. Fast shotgun snap release, interior A-gap pass protection.',
+    avatarColor: '#334155',
+  },
+  {
+    id: 'p-lg-56',
+    name: 'Quenton Nelson',
+    jerseyNumber: '56',
+    primaryPosition: 'OL',
+    assignedSlot: 'LG',
+    status: 'starter',
+    speedRating: 82,
+    handsRating: 80,
+    notes: '3 O-Line Left Guard. Dominant pass protection anchor and pulling road-grader on power runs.',
+    avatarColor: '#475569',
+  },
+  {
+    id: 'p-rg-70',
+    name: 'Zack Martin',
+    jerseyNumber: '70',
+    primaryPosition: 'OL',
+    assignedSlot: 'RG',
+    status: 'starter',
+    speedRating: 81,
+    handsRating: 82,
+    notes: '3 O-Line Right Guard. Wall in pass pro pocket, textbook reach and down blocks.',
     avatarColor: '#475569',
   },
   {
@@ -81,18 +106,6 @@ export const DEFAULT_ROSTER: RosterPlayer[] = [
     avatarColor: '#0284c7',
   },
   {
-    id: 'p-h-1',
-    name: "Ja'Marr Chase",
-    jerseyNumber: '1',
-    primaryPosition: 'SLOT',
-    assignedSlot: 'H',
-    status: 'starter',
-    speedRating: 96,
-    handsRating: 97,
-    notes: 'Physical slot separator. Excels on quick slants, drags, and whip routes.',
-    avatarColor: '#059669',
-  },
-  {
     id: 'p-y-87',
     name: 'Travis Kelce',
     jerseyNumber: '87',
@@ -101,7 +114,7 @@ export const DEFAULT_ROSTER: RosterPlayer[] = [
     status: 'starter',
     speedRating: 89,
     handsRating: 98,
-    notes: 'Mismatch vs Linebackers and Safeties. Zone-finder in Middle Hook areas.',
+    notes: 'Seam splitter and intermediate mismatch over linebackers and safeties.',
     avatarColor: '#ea580c',
   },
   {
@@ -111,10 +124,59 @@ export const DEFAULT_ROSTER: RosterPlayer[] = [
     primaryPosition: 'RB',
     assignedSlot: 'RB',
     status: 'starter',
-    speedRating: 94,
+    speedRating: 95,
     handsRating: 96,
-    notes: 'Elite route runner out of backfield. Angle, Texas, and Wheel route maestro.',
+    notes: 'Dual-threat running back. Decisive cutback runner, blitz pickup, and checkdown threat.',
     avatarColor: '#9333ea',
+  },
+  // High quality reserves
+  {
+    id: 'p-h-1',
+    name: "Ja'Marr Chase",
+    jerseyNumber: '1',
+    primaryPosition: 'SLOT',
+    assignedSlot: null,
+    status: 'bench',
+    speedRating: 96,
+    handsRating: 97,
+    notes: 'Physical slot separator. Excels on quick slants, drags, and whip routes.',
+    avatarColor: '#059669',
+  },
+  {
+    id: 'p-w-88',
+    name: 'CeeDee Lamb',
+    jerseyNumber: '88',
+    primaryPosition: 'WR',
+    assignedSlot: null,
+    status: 'bench',
+    speedRating: 95,
+    handsRating: 97,
+    notes: 'Versatile slot & boundary weapon on choice routes.',
+    avatarColor: '#f59e0b',
+  },
+  {
+    id: 'p-ol-71',
+    name: 'Trent Williams',
+    jerseyNumber: '71',
+    primaryPosition: 'OL',
+    assignedSlot: null,
+    status: 'bench',
+    speedRating: 83,
+    handsRating: 80,
+    notes: 'Power backup offensive lineman for 3 O-Line rotations.',
+    avatarColor: '#64748b',
+  },
+  {
+    id: 'p-rb-22',
+    name: 'Derrick Henry',
+    jerseyNumber: '22',
+    primaryPosition: 'RB',
+    assignedSlot: null,
+    status: 'bench',
+    speedRating: 92,
+    handsRating: 86,
+    notes: 'Power back for short yardage, goal-line, and dive concepts.',
+    avatarColor: '#b45309',
   },
   // Reserves / Backups
   {
@@ -181,13 +243,13 @@ export const DEFAULT_ROSTER: RosterPlayer[] = [
 
 export const ROSTER_PRESETS: { name: string; description: string; roster: RosterPlayer[] }[] = [
   {
-    name: 'NFL All-Pro 7v7',
-    description: 'Premier pro stars with specialized route archetypes and attributes.',
+    name: 'NFL All-Pro 8v8',
+    description: 'Premier pro stars with specialized route archetypes and attributes for 8v8.',
     roster: DEFAULT_ROSTER,
   },
   {
-    name: 'College Showcase Squad',
-    description: 'High-octane collegiate roster emphasizing vertical speed and slot spacing.',
+    name: 'College Showcase Squad (8v8)',
+    description: 'High-octane collegiate 8v8 roster emphasizing vertical speed and 4-receiver spacing.',
     roster: [
       {
         id: 'c-qb-7',
@@ -250,6 +312,18 @@ export const ROSTER_PRESETS: { name: string; description: string; roster: Roster
         avatarColor: '#059669',
       },
       {
+        id: 'c-w-1',
+        name: 'Ryan Williams',
+        jerseyNumber: '1',
+        primaryPosition: 'WR',
+        assignedSlot: 'W',
+        status: 'starter',
+        speedRating: 98,
+        handsRating: 96,
+        notes: 'Dynamic 8v8 slot receiver (+1 WR). Deep threat on inside posts.',
+        avatarColor: '#f59e0b',
+      },
+      {
         id: 'c-y-6',
         name: 'Colston Loveland',
         jerseyNumber: '6',
@@ -276,8 +350,8 @@ export const ROSTER_PRESETS: { name: string; description: string; roster: Roster
     ],
   },
   {
-    name: 'Youth Flag Football Academy',
-    description: 'Youth developmental 7v7 squad with simple numbering and balanced skillsets.',
+    name: 'Youth Flag Football Academy (8v8)',
+    description: 'Youth developmental 8v8 squad with simple numbering and balanced skillsets.',
     roster: [
       {
         id: 'y-qb-12',
@@ -340,6 +414,18 @@ export const ROSTER_PRESETS: { name: string; description: string; roster: Roster
         avatarColor: '#059669',
       },
       {
+        id: 'y-w-85',
+        name: 'Noah Clark',
+        jerseyNumber: '85',
+        primaryPosition: 'WR',
+        assignedSlot: 'W',
+        status: 'starter',
+        speedRating: 90,
+        handsRating: 91,
+        notes: '8v8 +1 WR inside slot route runner and reliable outlet.',
+        avatarColor: '#f59e0b',
+      },
+      {
         id: 'y-y-84',
         name: 'Ethan Wright',
         jerseyNumber: '84',
@@ -375,7 +461,11 @@ export function loadRosterFromStorage(): RosterPlayer[] {
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        const hasLG = parsed.some((p: RosterPlayer) => p.assignedSlot === 'LG');
+        const hasRG = parsed.some((p: RosterPlayer) => p.assignedSlot === 'RG');
+        if (hasLG && hasRG) {
+          return parsed;
+        }
       }
     }
   } catch (err) {
@@ -457,7 +547,9 @@ export function getPlayerAssignedToSlot(
     (p) =>
       p.status === 'starter' &&
       ((normalizedKey === 'QB' && p.primaryPosition === 'QB') ||
-        (normalizedKey === 'C' && p.primaryPosition === 'C') ||
+        (normalizedKey === 'C' && (p.primaryPosition === 'C' || p.primaryPosition === 'OL')) ||
+        (normalizedKey === 'LG' && (p.primaryPosition === 'LG' || p.primaryPosition === 'OL' || p.primaryPosition === 'OT' || p.primaryPosition === 'G')) ||
+        (normalizedKey === 'RG' && (p.primaryPosition === 'RG' || p.primaryPosition === 'OL' || p.primaryPosition === 'OT' || p.primaryPosition === 'G')) ||
         (normalizedKey === 'RB' && p.primaryPosition === 'RB') ||
         (normalizedKey === 'X' && p.primaryPosition === 'WR') ||
         (normalizedKey === 'Z' && p.primaryPosition === 'WR') ||

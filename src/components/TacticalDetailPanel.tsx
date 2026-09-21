@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Play, PlayerAssignment, RosterPlayer } from '../types';
+import { Play, PlayerAssignment, RosterPlayer, TimestampedCoachingCue, DefenseScheme } from '../types';
 import { getPlayerAssignedToSlot } from '../data/rosterData';
 import { getDrillsForPlay } from '../data/drillDatabase';
 import { detectConceptsForPlay } from '../data/routeConceptsData';
+import { getPlayAssignedCoverage, getDefenseSchemeById } from '../utils/defensiveScoutStorage';
 import { PlayEffectivenessRadar } from './PlayEffectivenessRadar';
+import { CoachingCuesSection } from './CoachingCuesSection';
 import {
   BookOpen,
   Target,
@@ -20,6 +22,7 @@ import {
   Users,
   GraduationCap,
   Tv,
+  Shield,
 } from 'lucide-react';
 
 interface TacticalDetailPanelProps {
@@ -34,6 +37,13 @@ interface TacticalDetailPanelProps {
   onOpenCoachingTips?: () => void;
   onToggleCoachingOverlay?: () => void;
   isCoachingOverlayOpen?: boolean;
+  currentProgress?: number;
+  isPlaying?: boolean;
+  onSeekProgress?: (progress: number) => void;
+  onTogglePlay?: () => void;
+  onUpdatePlayCues?: (cues: TimestampedCoachingCue[]) => void;
+  onOpenDefensiveScout?: () => void;
+  activeDefenseScheme?: DefenseScheme | null;
 }
 
 export const TacticalDetailPanel: React.FC<TacticalDetailPanelProps> = ({
@@ -48,9 +58,25 @@ export const TacticalDetailPanel: React.FC<TacticalDetailPanelProps> = ({
   onOpenCoachingTips,
   onToggleCoachingOverlay,
   isCoachingOverlayOpen = false,
+  currentProgress = 0,
+  isPlaying = false,
+  onSeekProgress,
+  onTogglePlay,
+  onUpdatePlayCues,
+  onOpenDefensiveScout,
+  activeDefenseScheme,
 }) => {
   const [isExporting, setIsExporting] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
+
+  // Assigned defensive coverage scout data
+  const assignedScout = useMemo(() => getPlayAssignedCoverage(play.id), [play.id]);
+  const assignedScheme = useMemo(() => {
+    if (assignedScout?.primarySchemeId) {
+      return getDefenseSchemeById(assignedScout.primarySchemeId);
+    }
+    return null;
+  }, [assignedScout]);
 
   // Detect applicable route concepts
   const matchedConcepts = useMemo(() => {
@@ -98,7 +124,7 @@ export const TacticalDetailPanel: React.FC<TacticalDetailPanelProps> = ({
           const blobUrl = URL.createObjectURL(blob);
           const a = document.createElement('a');
           const cleanCode = (play.code || 'play').replace(/[^a-zA-Z0-9_-]/g, '_');
-          a.download = `${cleanCode}_7v7_diagram.png`;
+          a.download = `${cleanCode}_8v8_diagram.png`;
           a.href = blobUrl;
           document.body.appendChild(a);
           a.click();
@@ -260,6 +286,69 @@ export const TacticalDetailPanel: React.FC<TacticalDetailPanelProps> = ({
 
       {/* Play Effectiveness Radar Profile (Recharts) */}
       <PlayEffectivenessRadar play={play} />
+
+      {/* Defensive Coverage Scout Quick Banner */}
+      <div
+        id="tactical-panel-defensive-scout-box"
+        className="bg-rose-50/60 border border-rose-200/90 rounded-2xl p-3.5 sm:p-4 space-y-2.5 transition-all"
+      >
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-rose-600 text-white flex items-center justify-center">
+              <Shield className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h4 className="text-xs font-bold text-slate-900">
+                  Defensive Scout &amp; Coverage Matchup
+                </h4>
+                {assignedScheme && (
+                  <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                    Default: {assignedScheme.shortName}
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-600 font-sans">
+                {assignedScheme
+                  ? `Configured: ${assignedScheme.name}`
+                  : 'No specific defense pinned to this play yet (Click to scout)'}
+              </p>
+            </div>
+          </div>
+
+          {onOpenDefensiveScout && (
+            <button
+              id="tactical-panel-launch-defense-scout-btn"
+              onClick={onOpenDefensiveScout}
+              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm shadow-rose-600/20 transition-all cursor-pointer active:scale-95 shrink-0"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>Scout Coverages</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {assignedScout?.notes && (
+          <div className="bg-white/80 rounded-xl p-2.5 border border-rose-200/60 text-xs font-mono text-slate-700">
+            <span className="text-[10px] font-bold text-rose-800 uppercase block">Scout Keys &amp; Alerts:</span>
+            <p className="text-[11px] text-slate-600 whitespace-pre-line mt-0.5">{assignedScout.notes}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Timestamped Coaching Cues (Interactive Animation Timeline Cues) */}
+      <CoachingCuesSection
+        play={play}
+        currentProgress={currentProgress}
+        isPlaying={isPlaying}
+        onSeekProgress={onSeekProgress}
+        onTogglePlay={onTogglePlay}
+        roster={roster}
+        selectedPlayerId={selectedPlayerId}
+        onSelectPlayer={onSelectPlayer}
+        onUpdatePlayCues={onUpdatePlayCues}
+      />
 
       {/* QB Progression Reads */}
       {play.progressionReads && play.progressionReads.length > 0 && (

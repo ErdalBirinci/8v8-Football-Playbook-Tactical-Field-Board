@@ -360,14 +360,21 @@ export const PrintLayoutModal: React.FC<PrintLayoutModalProps> = ({
             {/* ================= OFFICIAL PLAYBOOK HEADER ================= */}
             <div className="border-b-2 border-slate-900 pb-3 mb-4">
               <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <span className="px-2 py-0.5 rounded bg-slate-900 text-white font-mono font-bold text-[10px] uppercase tracking-wider">
-                      7v7 OFFENSIVE INSTALL
-                    </span>
-                    <span className="px-2 py-0.5 rounded border border-slate-900 font-mono font-bold text-[10px] text-slate-900">
-                      {play.category}
-                    </span>
+                <div className="flex items-start gap-3.5">
+                  <img
+                    src="/aalto-predators-logo.svg"
+                    alt="Aalto Predators Logo"
+                    className="w-12 h-12 object-contain shrink-0 mt-0.5 rounded-lg bg-black p-0.5 border border-red-500/40"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <span className="px-2 py-0.5 rounded bg-red-600 text-white font-mono font-bold text-[10px] uppercase tracking-wider">
+                        AALTO PREDATORS 8v8 INSTALL
+                      </span>
+                      <span className="px-2 py-0.5 rounded border border-slate-900 font-mono font-bold text-[10px] text-slate-900">
+                        {play.category}
+                      </span>
                     <span className="px-2 py-0.5 rounded border border-slate-400 font-mono text-[10px] text-slate-700">
                       DIR: {play.direction}
                     </span>
@@ -394,8 +401,9 @@ export const PrintLayoutModal: React.FC<PrintLayoutModalProps> = ({
                     )}
                   </div>
                 </div>
+              </div>
 
-                <div className="text-right shrink-0">
+              <div className="text-right shrink-0">
                   <div className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-wider">
                     PLAYBOOK REF
                   </div>
@@ -579,7 +587,7 @@ export const PrintLayoutModal: React.FC<PrintLayoutModalProps> = ({
                     <div className="col-span-1 md:col-span-7 border border-slate-900 rounded-lg overflow-hidden">
                       <div className="bg-slate-900 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1.5 font-mono flex items-center justify-between">
                         <span>PLAYER ROUTE &amp; ALIGNMENT MATRIX</span>
-                        <span className="text-[9px] text-slate-300 font-normal">7-PLAYER ROSTER</span>
+                        <span className="text-[9px] text-slate-300 font-normal">8-PLAYER ROSTER (8v8)</span>
                       </div>
                       <table className="w-full text-[11px] text-left border-collapse">
                         <thead>
@@ -711,7 +719,7 @@ export const PrintLayoutModal: React.FC<PrintLayoutModalProps> = ({
 
             {/* ================= PRINT FOOTER ================= */}
             <div className="mt-5 pt-2 border-t border-slate-200 flex items-center justify-between text-[9px] font-mono text-slate-500">
-              <span>7v7 Flag Football Playbook System • {play.code}</span>
+              <span>8v8 Flag &amp; Tackle Football Playbook System (Finland University League) • {play.code}</span>
               <span>Generated on {new Date().toLocaleDateString()}</span>
             </div>
           </div>

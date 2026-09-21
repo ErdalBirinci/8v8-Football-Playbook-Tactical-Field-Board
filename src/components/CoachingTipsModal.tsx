@@ -417,7 +417,7 @@ export const CoachingTipsModal: React.FC<CoachingTipsModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Tactical breakdowns, high-low read rules, and video walkthroughs for 7v7 route concepts.
+                Tactical breakdowns, high-low read rules, and video walkthroughs for 8v8 route concepts (Finland University League).
               </p>
             </div>
           </div>
