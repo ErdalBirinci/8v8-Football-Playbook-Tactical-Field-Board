@@ -31,8 +31,18 @@ import {
   CheckCircle2,
   Zap,
   Grid,
+  CloudSnow,
+  CloudRain,
+  Sun,
+  Ruler,
+  Shield,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
 import { getTeamBranding } from '../utils/teamBranding';
+import { footballAudio } from '../utils/audioSynthesizer';
+import { TelestratorCanvas } from './TelestratorCanvas';
+import { MeasurementCaliper, CaliperPoint } from './MeasurementCaliper';
 
 interface FieldBoardProps {
   play: Play;
@@ -127,6 +137,42 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
   const [showGhostTrails, setShowGhostTrails] = useState(true);
   const [audibleActive, setAudibleActive] = useState(false);
   const [teamBranding, setTeamBranding] = useState(() => getTeamBranding());
+
+  // 20 System Improvements Enhancements (Functional & Visual)
+  const [showVisionCone, setShowVisionCone] = useState(true);
+  const [isAdaptiveDefenseActive, setIsAdaptiveDefenseActive] = useState(true);
+  const [weather, setWeather] = useState<'clear' | 'dome' | 'snow' | 'rain'>('clear');
+  const [isTelestratorActive, setIsTelestratorActive] = useState(false);
+  const [isCaliperActive, setIsCaliperActive] = useState(false);
+  const [caliperPoints, setCaliperPoints] = useState<CaliperPoint[]>([]);
+  const [lastAudioProgress, setLastAudioProgress] = useState<number>(0);
+
+  // Audio synthesizer synchronization during playback (Functional #10)
+  useEffect(() => {
+    if (!isPlaying) {
+      setLastAudioProgress(progress);
+      return;
+    }
+
+    // Cadence / Snap at play start
+    if (lastAudioProgress <= 0.04 && progress > 0.04) {
+      footballAudio.playSnap();
+    }
+    // QB throw release
+    if (lastAudioProgress <= 0.45 && progress > 0.45) {
+      footballAudio.playThrow();
+    }
+    // Receiver catch
+    if (lastAudioProgress <= 0.85 && progress > 0.85) {
+      footballAudio.playCatch();
+    }
+    // Play end whistle
+    if (lastAudioProgress <= 0.98 && progress >= 0.98) {
+      footballAudio.playWhistle();
+    }
+
+    setLastAudioProgress(progress);
+  }, [isPlaying, progress, lastAudioProgress]);
 
   useEffect(() => {
     const handleBranding = (e: any) => {
@@ -366,6 +412,97 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
 
   const lineStroke = getLineColor();
 
+  // QB Vision Cone & Read Progression (Functional #1)
+  const visionConeData = useMemo(() => {
+    if (!showVisionCone) return null;
+    const qbPos = getPlayerCurrentPosition('QB');
+    const primaryKey = Object.keys(play.players).find((k) => play.players[k].route.isPrimary) || 'Z';
+    const secondaryKey = Object.keys(play.players).find((k) => play.players[k].route.isSecondary) || 'X';
+    const checkdownKey = Object.keys(play.players).find((k) => k.includes('RB') || play.players[k].route.routeType === 'flat') || 'H';
+
+    let currentTargetKey = primaryKey;
+    let readIndex = 1;
+    let readLabel = 'READ 1';
+    let coneColor = '#10b981';
+
+    if (progress >= 0.35 && progress < 0.65) {
+      currentTargetKey = secondaryKey;
+      readIndex = 2;
+      readLabel = 'READ 2';
+      coneColor = '#06b6d4';
+    } else if (progress >= 0.65) {
+      currentTargetKey = checkdownKey;
+      readIndex = 3;
+      readLabel = 'CHECKDOWN';
+      coneColor = '#f59e0b';
+    }
+
+    const targetPos = getPlayerCurrentPosition(currentTargetKey);
+    const dx = targetPos.x - qbPos.x;
+    const dy = targetPos.y - qbPos.y;
+    const angle = Math.atan2(dy, dx);
+    const distance = Math.max(12, Math.sqrt(dx * dx + dy * dy));
+    const spreadAngle = 0.32;
+
+    const p1 = {
+      x: qbPos.x + Math.cos(angle - spreadAngle) * (distance + 6),
+      y: qbPos.y + Math.sin(angle - spreadAngle) * (distance + 6),
+    };
+    const p2 = {
+      x: qbPos.x + Math.cos(angle + spreadAngle) * (distance + 6),
+      y: qbPos.y + Math.sin(angle + spreadAngle) * (distance + 6),
+    };
+
+    return {
+      qbPos,
+      targetPos,
+      targetKey: currentTargetKey,
+      readIndex,
+      readLabel,
+      coneColor,
+      pointsStr: `${qbPos.x},${qbPos.y} ${p1.x},${p1.y} ${p2.x},${p2.y}`,
+    };
+  }, [showVisionCone, progress, play]);
+
+  // Defensive Zone Overload Detection (Visual #5)
+  const zoneOverloads = useMemo(() => {
+    if (!showZones) return [];
+    const zones = [
+      { name: 'DEEP RIGHT', x: 75, y: 30, rx: 16, ry: 12 },
+      { name: 'DEEP MIDDLE', x: 50, y: 25, rx: 16, ry: 12 },
+      { name: 'DEEP LEFT', x: 25, y: 30, rx: 16, ry: 12 },
+      { name: 'RIGHT FLAT', x: 80, y: 55, rx: 14, ry: 8 },
+      { name: 'LEFT FLAT', x: 20, y: 55, rx: 14, ry: 8 },
+      { name: 'HOOK / CURL', x: 50, y: 52, rx: 18, ry: 9 },
+    ];
+
+    return zones.map((z) => {
+      let offCount = 0;
+      Object.keys(play.players).forEach((pk) => {
+        if (pk === 'QB' || pk === 'C') return;
+        const pos = getPlayerCurrentPosition(pk);
+        if (Math.abs(pos.x - z.x) <= z.rx && Math.abs(pos.y - z.y) <= z.ry) {
+          offCount++;
+        }
+      });
+      return { ...z, offCount, isOverloaded: offCount >= 2 };
+    });
+  }, [showZones, play, progress]);
+
+  // Click handler on SVG for Measurement Caliper (Visual #9)
+  const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!isCaliperActive) return;
+    const svg = e.currentTarget;
+    const rect = svg.getBoundingClientRect();
+    const clickX = ((e.clientX - rect.left) / rect.width) * 100;
+    const clickY = ((e.clientY - rect.top) / rect.height) * 100;
+
+    setCaliperPoints((prev) => {
+      if (prev.length >= 2) return [{ x: clickX, y: clickY }];
+      return [...prev, { x: clickX, y: clickY }];
+    });
+  };
+
   // Compute container aspect ratio and responsive height based on scale mode (1.5x active default)
   const getContainerScaleClasses = () => {
     if (isFullscreen) {
@@ -401,9 +538,24 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
         id="fieldboard-svg-canvas"
         viewBox="0 0 100 100"
         preserveAspectRatio="xMidYMid meet"
-        className="w-full h-full block"
+        className={`w-full h-full block ${isCaliperActive ? 'cursor-crosshair' : ''}`}
+        onClick={handleSvgClick}
       >
         <defs>
+          {/* QB Vision Cone Gradients (Functional #1) */}
+          <linearGradient id="qb-vision-cone-gradient" x1="0%" y1="100%" x2="0%" y2="0%">
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0.45" />
+            <stop offset="60%" stopColor="#38bdf8" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.0" />
+          </linearGradient>
+
+          {/* Dome Stadium Spotlight (Visual #3) */}
+          <radialGradient id="dome-spotlight" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.22" />
+            <stop offset="60%" stopColor="#38bdf8" stopOpacity="0.08" />
+            <stop offset="100%" stopColor="#000000" stopOpacity="0.0" />
+          </radialGradient>
+
           {/* Arrowhead Markers */}
           <marker
             id="arrow-primary"
@@ -845,6 +997,164 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           </g>
         )}
 
+        {/* ================= Sideline 1st Down Chains & Officials Marker (Visual #10) ================= */}
+        <g id="sideline-chains-officials" className="pointer-events-none select-none">
+          {/* Orange LOS Stake */}
+          <rect x="0.8" y="63.8" width="4.4" height="2.4" rx="0.6" fill="#ea580c" stroke="#ffffff" strokeWidth="0.3" />
+          <text x="3.0" y="65.5" fontSize="1.4" fontWeight="bold" fill="#ffffff" textAnchor="middle" className="font-mono">
+            LOS
+          </text>
+          {/* Connecting Chain Line */}
+          <line x1="3.0" y1="65" x2="3.0" y2="52" stroke="#f59e0b" strokeWidth="0.6" strokeDasharray="1.2,1.2" />
+          {/* Yellow 1st Down Stake */}
+          <rect x="0.8" y="50.8" width="4.4" height="2.4" rx="0.6" fill="#facc15" stroke="#000000" strokeWidth="0.3" />
+          <text x="3.0" y="52.5" fontSize="1.4" fontWeight="bold" fill="#000000" textAnchor="middle" className="font-mono">
+            1ST
+          </text>
+        </g>
+
+        {/* ================= Weather & Environmental Atmosphere Layer (Visual #3) ================= */}
+        {weather === 'snow' && (
+          <g id="snow-weather-layer" className="pointer-events-none select-none">
+            {Array.from({ length: 32 }).map((_, i) => {
+              const sx = (i * 37) % 100;
+              const sy = ((i * 41) + progress * 240) % 100;
+              return (
+                <circle
+                  key={`snow-${i}`}
+                  cx={sx}
+                  cy={sy}
+                  r={0.4 + (i % 3) * 0.25}
+                  fill="#ffffff"
+                  opacity={0.7 + (i % 4) * 0.1}
+                />
+              );
+            })}
+          </g>
+        )}
+        {weather === 'rain' && (
+          <g id="rain-weather-layer" className="pointer-events-none select-none">
+            {Array.from({ length: 45 }).map((_, i) => {
+              const rx = (i * 29) % 100;
+              const ry = ((i * 53) + progress * 400) % 100;
+              return (
+                <line
+                  key={`rain-${i}`}
+                  x1={rx}
+                  y1={ry}
+                  x2={rx - 1}
+                  y2={ry + 3.5}
+                  stroke="#38bdf8"
+                  strokeWidth="0.3"
+                  opacity="0.55"
+                />
+              );
+            })}
+          </g>
+        )}
+        {weather === 'dome' && (
+          <g id="dome-lighting-layer" className="pointer-events-none select-none">
+            <ellipse cx="50" cy="50" rx="46" ry="42" fill="url(#dome-spotlight)" opacity="0.35" />
+          </g>
+        )}
+
+        {/* ================= Interactive QB Vision Cone & Read Progression (Functional #1) ================= */}
+        {showVisionCone && visionConeData && (
+          <g id="qb-vision-cone-layer" className="pointer-events-none select-none animate-in fade-in duration-300">
+            {/* Projected Vision Cone Polygon */}
+            <polygon
+              points={visionConeData.pointsStr}
+              fill="url(#qb-vision-cone-gradient)"
+              stroke={visionConeData.coneColor}
+              strokeWidth="0.5"
+              strokeDasharray="2,2"
+              opacity="0.75"
+            />
+            {/* Targeting Reticle at Target Receiver */}
+            <g transform={`translate(${visionConeData.targetPos.x}, ${visionConeData.targetPos.y})`}>
+              <circle
+                r="4.8"
+                fill="none"
+                stroke={visionConeData.coneColor}
+                strokeWidth="0.7"
+                strokeDasharray="2,1"
+                className="animate-spin"
+              />
+              <circle
+                r="2.2"
+                fill="none"
+                stroke={visionConeData.coneColor}
+                strokeWidth="0.5"
+              />
+              {/* Read Stage Badge */}
+              <g transform="translate(0, -5.5)">
+                <rect
+                  x="-7"
+                  y="-1.8"
+                  width="14"
+                  height="3.6"
+                  rx="1"
+                  fill="rgba(15, 23, 42, 0.92)"
+                  stroke={visionConeData.coneColor}
+                  strokeWidth="0.4"
+                />
+                <text
+                  x="0"
+                  y="0.7"
+                  fontSize="1.6"
+                  fontWeight="bold"
+                  fill={visionConeData.coneColor}
+                  textAnchor="middle"
+                  className="font-mono tracking-tighter"
+                >
+                  {visionConeData.readLabel}
+                </text>
+              </g>
+            </g>
+          </g>
+        )}
+
+        {/* ================= Defensive Zone Overload & Flood Indicators (Visual #5) ================= */}
+        {showZones && zoneOverloads.map((z, idx) => (
+          <g key={`zone-overload-${idx}`} className="pointer-events-none select-none">
+            <ellipse
+              cx={z.x}
+              cy={z.y}
+              rx={z.rx}
+              ry={z.ry}
+              fill={z.isOverloaded ? 'rgba(239, 68, 68, 0.18)' : 'rgba(56, 189, 248, 0.06)'}
+              stroke={z.isOverloaded ? '#ef4444' : 'rgba(56, 189, 248, 0.3)'}
+              strokeWidth={z.isOverloaded ? '0.75' : '0.35'}
+              strokeDasharray={z.isOverloaded ? 'none' : '2,2'}
+            />
+            {z.isOverloaded && (
+              <g transform={`translate(${z.x}, ${z.y})`}>
+                <rect
+                  x="-10"
+                  y="-2"
+                  width="20"
+                  height="4"
+                  rx="1"
+                  fill="rgba(15, 23, 42, 0.95)"
+                  stroke="#ef4444"
+                  strokeWidth="0.4"
+                />
+                <text
+                  x="0"
+                  y="0.8"
+                  fontSize="1.6"
+                  fontWeight="bold"
+                  fill="#f87171"
+                  textAnchor="middle"
+                  className="font-mono"
+                >
+                  OVERLOAD (+{z.offCount})
+                </text>
+              </g>
+            )}
+          </g>
+        ))}
+
         {/* ================= Defensive Zones & Coverage Overlay ================= */}
         {showDefense && defenseScheme && (
           <g id="defensive-scheme-overlay">
@@ -910,6 +1220,20 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
               // Calculate reaction towards ball, zone drop, or receiver assignment
               let defX = defPlayer.initialPos.x;
               let defY = defPlayer.initialPos.y;
+
+              // Adaptive Defensive AI Auto-Shade (Functional #2)
+              if (isAdaptiveDefenseActive) {
+                if (play.direction === 'RIGHT') {
+                  if (defPlayer.position.includes('FS') || defPlayer.position.includes('S')) defX += 3.5;
+                  if (defPlayer.position.includes('CB') && defPlayer.initialPos.x > 50) defX += 2.5;
+                } else if (play.direction === 'LEFT') {
+                  if (defPlayer.position.includes('FS') || defPlayer.position.includes('S')) defX -= 3.5;
+                  if (defPlayer.position.includes('CB') && defPlayer.initialPos.x < 50) defX -= 2.5;
+                }
+                if (play.formationName.includes('Empty') && defPlayer.position.includes('LB')) {
+                  defY -= 2.5;
+                }
+              }
 
               if (progress > 0.3) {
                 const reactProgress = (progress - 0.3) / 0.7;
@@ -1129,43 +1453,110 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
                       );
                     })()
                   )}
+
+                  {/* Plant & Cut Kinetic Indicators (Visual #4) */}
+                  {player.route.points.map((pt, pIdx) => {
+                    if (pt.type !== 'break') return null;
+                    return (
+                      <g key={`cut-ind-${pIdx}`} className="pointer-events-none">
+                        <circle
+                          cx={pt.x}
+                          cy={pt.y}
+                          r="2.8"
+                          fill="none"
+                          stroke="#f59e0b"
+                          strokeWidth="0.6"
+                          strokeDasharray="1.5,1.5"
+                          className="animate-ping"
+                          opacity="0.8"
+                        />
+                        <polygon
+                          points={`${pt.x},${pt.y - 1.2} ${pt.x + 1.2},${pt.y} ${pt.x},${pt.y + 1.2} ${pt.x - 1.2},${pt.y}`}
+                          fill="#facc15"
+                          stroke="#0f172a"
+                          strokeWidth="0.3"
+                        />
+                      </g>
+                    );
+                  })}
                 </g>
               )}
             </g>
           );
         })}
 
-        {/* ================= Animated Ball Flight ================= */}
-        {isPlaying && progress > 0.05 && (
-          <g>
-            {/* Ball Shadow */}
+        {/* ================= 3D Parabolic Ball Flight & Physics Arc (Visual #1) ================= */}
+        {isPlaying && progress > 0.04 && (
+          <g id="parabolic-ball-flight" className="pointer-events-none select-none">
+            {/* Ground Shadow on Field Grass */}
             <ellipse
               cx={ballPos.x}
-              cy={ballPos.y + 1}
-              rx="1.2"
-              ry="0.6"
-              fill="rgba(0,0,0,0.4)"
+              cy={ballPos.y + (progress >= 0.45 && progress <= 0.85 ? Math.sin(((progress - 0.45) / 0.4) * Math.PI) * 9 : 0.8)}
+              rx={1.5}
+              ry={0.7}
+              fill="rgba(0,0,0,0.42)"
             />
-            {/* Football */}
-            <ellipse
-              cx={ballPos.x}
-              cy={ballPos.y}
-              rx="1.4"
-              ry="0.85"
-              fill="#92400e"
-              stroke="#fef3c7"
-              strokeWidth="0.3"
-              transform={`rotate(-25 ${ballPos.x} ${ballPos.y})`}
-            />
-            {/* White Laces */}
-            <line
-              x1={ballPos.x - 0.5}
-              y1={ballPos.y}
-              x2={ballPos.x + 0.5}
-              y2={ballPos.y}
-              stroke="#ffffff"
-              strokeWidth="0.3"
-            />
+
+            {/* Elevated 3D Football with Parabolic Scale & Spin */}
+            <g
+              transform={`translate(${ballPos.x}, ${ballPos.y}) scale(${
+                progress >= 0.45 && progress <= 0.85
+                  ? 1.0 + Math.sin(((progress - 0.45) / 0.4) * Math.PI) * 0.7
+                  : 1.0
+              })`}
+            >
+              {/* Spiral Golden Glow Trail in Flight */}
+              {progress >= 0.48 && progress <= 0.82 && (
+                <circle
+                  r="2.8"
+                  fill="rgba(250, 204, 21, 0.2)"
+                  className="animate-ping"
+                />
+              )}
+
+              {/* Collegiate Pro Leather Ball Body */}
+              <ellipse
+                cx="0"
+                cy="0"
+                rx="1.5"
+                ry="0.9"
+                fill="#78350f"
+                stroke="#fef3c7"
+                strokeWidth="0.25"
+                transform={`rotate(${(progress * 720) % 360} 0 0)`}
+              />
+              {/* White Laces */}
+              <line x1="-0.6" y1="0" x2="0.6" y2="0" stroke="#ffffff" strokeWidth="0.25" />
+              <line x1="-0.3" y1="-0.25" x2="-0.3" y2="0.25" stroke="#ffffff" strokeWidth="0.2" />
+              <line x1="0" y1="-0.25" x2="0" y2="0.25" stroke="#ffffff" strokeWidth="0.2" />
+              <line x1="0.3" y1="-0.25" x2="0.3" y2="0.25" stroke="#ffffff" strokeWidth="0.2" />
+            </g>
+          </g>
+        )}
+
+        {/* ================= Measurement Caliper Laser Overlay (Visual #9) ================= */}
+        {isCaliperActive && caliperPoints.length > 0 && (
+          <g id="caliper-laser-overlay" className="pointer-events-none select-none">
+            {caliperPoints.map((pt, idx) => (
+              <g key={`caliper-pt-${idx}`}>
+                <circle cx={pt.x} cy={pt.y} r="1.6" fill="#06b6d4" stroke="#ffffff" strokeWidth="0.4" />
+                <circle cx={pt.x} cy={pt.y} r="3.2" fill="none" stroke="#06b6d4" strokeWidth="0.4" className="animate-ping" />
+                <text x={pt.x} y={pt.y - 2.5} fontSize="1.8" fontWeight="bold" fill="#06b6d4" textAnchor="middle">
+                  {idx === 0 ? 'POINT A' : 'POINT B'}
+                </text>
+              </g>
+            ))}
+            {caliperPoints.length === 2 && (
+              <line
+                x1={caliperPoints[0].x}
+                y1={caliperPoints[0].y}
+                x2={caliperPoints[1].x}
+                y2={caliperPoints[1].y}
+                stroke="#06b6d4"
+                strokeWidth="0.8"
+                strokeDasharray="2,2"
+              />
+            )}
           </g>
         )}
 
@@ -1662,6 +2053,91 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           <span className="hidden sm:inline">Audible</span>
         </button>
 
+        {/* QB Vision Cone & Progression Read Toggle (Functional #1) */}
+        <button
+          id="fieldboard-vision-cone-btn"
+          onClick={() => setShowVisionCone(!showVisionCone)}
+          title={showVisionCone ? 'Hide QB Vision Cone & Read Progression' : 'Show QB Vision Cone & Read Progression'}
+          className={`backdrop-blur-md min-h-[36px] px-2.5 py-1.5 rounded-xl shadow-lg flex items-center gap-1 text-xs font-bold transition-all active:scale-95 border cursor-pointer touch-manipulation ${
+            showVisionCone
+              ? 'bg-emerald-600 text-white border-emerald-400 shadow-emerald-950/40'
+              : 'bg-slate-900/85 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700/60 shadow-slate-950/40'
+          }`}
+        >
+          <Eye className="w-3.5 h-3.5 text-emerald-400" />
+          <span className="hidden sm:inline">Vision</span>
+        </button>
+
+        {/* Adaptive AI Defense Auto-Shade (Functional #2) */}
+        <button
+          id="fieldboard-adaptive-ai-btn"
+          onClick={() => setIsAdaptiveDefenseActive(!isAdaptiveDefenseActive)}
+          title={isAdaptiveDefenseActive ? 'Disable Adaptive Defense AI Auto-Shade' : 'Enable Adaptive Defensive AI Auto-Shade'}
+          className={`backdrop-blur-md min-h-[36px] px-2.5 py-1.5 rounded-xl shadow-lg flex items-center gap-1 text-xs font-bold transition-all active:scale-95 border cursor-pointer touch-manipulation ${
+            isAdaptiveDefenseActive
+              ? 'bg-purple-600 text-white border-purple-400 shadow-purple-950/40'
+              : 'bg-slate-900/85 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700/60 shadow-slate-950/40'
+          }`}
+        >
+          <Shield className="w-3.5 h-3.5 text-purple-400" />
+          <span className="hidden sm:inline">Auto-Shade</span>
+        </button>
+
+        {/* Weather & Turf Conditions Engine (Visual #3) */}
+        <button
+          id="fieldboard-weather-btn"
+          onClick={() => {
+            const next = weather === 'clear' ? 'dome' : weather === 'dome' ? 'snow' : weather === 'snow' ? 'rain' : 'clear';
+            setWeather(next);
+          }}
+          title={`Weather: ${weather.toUpperCase()} - Click to cycle (Clear / Dome / Snow / Rain)`}
+          className="backdrop-blur-md min-h-[36px] px-2.5 py-1.5 rounded-xl shadow-lg flex items-center gap-1 text-xs font-bold transition-all active:scale-95 border bg-slate-900/85 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700/60 shadow-slate-950/40 cursor-pointer touch-manipulation"
+        >
+          {weather === 'snow' ? (
+            <CloudSnow className="w-3.5 h-3.5 text-cyan-200 animate-pulse" />
+          ) : weather === 'rain' ? (
+            <CloudRain className="w-3.5 h-3.5 text-blue-300" />
+          ) : weather === 'dome' ? (
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+          ) : (
+            <Sun className="w-3.5 h-3.5 text-amber-400" />
+          )}
+          <span className="hidden sm:inline capitalize">{weather}</span>
+        </button>
+
+        {/* Live Telestrator Chalk Tool (Functional #8) */}
+        <button
+          id="fieldboard-telestrator-btn"
+          onClick={() => setIsTelestratorActive(!isTelestratorActive)}
+          title={isTelestratorActive ? 'Close Live Telestrator' : 'Open Live Coach Telestrator & Freehand Chalk'}
+          className={`backdrop-blur-md min-h-[36px] px-2.5 py-1.5 rounded-xl shadow-lg flex items-center gap-1 text-xs font-bold transition-all active:scale-95 border cursor-pointer touch-manipulation ${
+            isTelestratorActive
+              ? 'bg-amber-500 text-slate-950 font-bold border-amber-300 shadow-amber-950/40'
+              : 'bg-slate-900/85 hover:bg-slate-800 text-amber-400 hover:text-white border-slate-700/60 shadow-slate-950/40'
+          }`}
+        >
+          <PenTool className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Telestrator</span>
+        </button>
+
+        {/* Tactical Caliper & Split Ruler (Visual #9) */}
+        <button
+          id="fieldboard-caliper-btn"
+          onClick={() => {
+            setIsCaliperActive(!isCaliperActive);
+            if (isCaliperActive) setCaliperPoints([]);
+          }}
+          title={isCaliperActive ? 'Close Caliper Ruler' : 'Measure Exact Receiver Splits & Depth with Caliper'}
+          className={`backdrop-blur-md min-h-[36px] px-2.5 py-1.5 rounded-xl shadow-lg flex items-center gap-1 text-xs font-bold transition-all active:scale-95 border cursor-pointer touch-manipulation ${
+            isCaliperActive
+              ? 'bg-cyan-600 text-white border-cyan-400 shadow-cyan-950/40'
+              : 'bg-slate-900/85 hover:bg-slate-800 text-cyan-300 hover:text-white border-slate-700/60 shadow-slate-950/40'
+          }`}
+        >
+          <Ruler className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Caliper</span>
+        </button>
+
         {onToggleCoachingOverlay && (
           <button
             id="fieldboard-coaching-tips-btn"
@@ -2052,6 +2528,23 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
         </div>
       )}
 
+      {/* Live Coach Telestrator Canvas (Functional #8) */}
+      <TelestratorCanvas
+        isActive={isTelestratorActive}
+        onClose={() => setIsTelestratorActive(false)}
+      />
+
+      {/* Tactical Caliper & Receiver Split Measurement Ruler (Visual #9) */}
+      <MeasurementCaliper
+        isActive={isCaliperActive}
+        points={caliperPoints}
+        onClear={() => setCaliperPoints([])}
+        onClose={() => {
+          setIsCaliperActive(false);
+          setCaliperPoints([]);
+        }}
+      />
+
     </div>
   );
 
@@ -2110,7 +2603,7 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
             <button
               onClick={() => onSeek(0)}
               className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all active:scale-95"
-              title="Başa Sar (Reset)"
+              title="Reset Timeline"
             >
               <RotateCcw className="w-4 h-4" />
             </button>

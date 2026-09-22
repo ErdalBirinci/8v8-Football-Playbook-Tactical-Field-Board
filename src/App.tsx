@@ -31,30 +31,16 @@ import { CoachingTipsModal } from './components/CoachingTipsModal';
 import { GamePlanStatsModal } from './components/GamePlanStatsModal';
 import { DefensiveScoutModal } from './components/DefensiveScoutModal';
 import { FormationGalleryModal } from './components/FormationGalleryModal';
+import { BroadcastScorebug } from './components/BroadcastScorebug';
+import { PreSnapAudibleBar } from './components/PreSnapAudibleBar';
+import { CallSheetBuilderModal } from './components/CallSheetBuilderModal';
+import { PlayComparisonModal } from './components/PlayComparisonModal';
+import { OffensiveTendencyModal } from './components/OffensiveTendencyModal';
+import { PlayerQuizFlashcardsModal } from './components/PlayerQuizFlashcardsModal';
+import { TopNavbar } from './components/TopNavbar';
+import { footballAudio } from './utils/audioSynthesizer';
 import { getPlayAssignedCoverage, getDefenseSchemeById } from './utils/defensiveScoutStorage';
 import { getSavedFolders } from './utils/folderStorage';
-import {
-  BookOpen,
-  Languages,
-  Zap,
-  Printer,
-  Sparkles,
-  ShieldAlert,
-  Shield,
-  ChevronLeft,
-  ChevronRight,
-  Maximize2,
-  Minimize2,
-  Layers,
-  PenTool,
-  Dumbbell,
-  FileDown,
-  Users,
-  GraduationCap,
-  Tv,
-  BarChart3,
-  LayoutGrid,
-} from 'lucide-react';
 
 export default function App() {
   // Current active play
@@ -81,6 +67,14 @@ export default function App() {
   const [showZones, setShowZones] = useState(true);
   const [showFieldGrid, setShowFieldGrid] = useState(false);
   const [fieldTheme, setFieldTheme] = useState<'turf' | 'tactical' | 'chalkboard' | 'stadium-night'>('tactical');
+
+  // New Feature Modals & Broadcast Overlays
+  const [isCallSheetOpen, setIsCallSheetOpen] = useState(false);
+  const [isComparisonOpen, setIsComparisonOpen] = useState(false);
+  const [isTendencyOpen, setIsTendencyOpen] = useState(false);
+  const [isFlashcardsQuizOpen, setIsFlashcardsQuizOpen] = useState(false);
+  const [isAudibleBarOpen, setIsAudibleBarOpen] = useState(false);
+  const [isSoundMuted, setIsSoundMuted] = useState(false);
 
   // Coaching tips & Video overlay state
   const [isCoachingTipsOpen, setIsCoachingTipsOpen] = useState(false);
@@ -411,177 +405,31 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans selection:bg-blue-600 selection:text-white">
-      {/* Top Application Header */}
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/90 px-4 py-3 shadow-xs">
-        <div className="max-w-[1720px] mx-auto flex flex-wrap items-center justify-between gap-3">
-          {/* Logo & Playbook Title */}
-          <div className="flex items-center gap-3">
-            <div className="relative group cursor-pointer shrink-0">
-              <img
-                src="/aalto-predators-logo.svg"
-                alt="Aalto Predators Helmet Logo"
-                className="w-12 h-12 rounded-xl object-contain drop-shadow-md border-2 border-red-600/40 bg-black p-0.5 transition-transform group-hover:scale-105"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg sm:text-xl font-black tracking-tight font-display text-slate-900">
-                  AALTO PREDATORS 8v8 PLAYBOOK
-                </h1>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-red-100 text-red-700 border border-red-300 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
-                  PREDATORS
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 font-mono">
-                Aalto University American Football • Finland University League • {ALL_PLAYBOOK_PLAYS.length} Plays
-              </p>
-            </div>
-          </div>
-
-          {/* Top Quick Utility Buttons */}
-          <div className="flex items-center flex-wrap gap-2 text-xs">
-            <button
-              id="top-formation-gallery-btn"
-              onClick={() => setIsFormationGalleryOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white font-bold border border-cyan-500 flex items-center gap-1.5 transition-all shadow-sm shadow-cyan-600/20 active:scale-95 cursor-pointer"
-              title="Open 8v8 Formation Gallery & Personnel Lab (Empty, Trips, Spread, 2-Line, Split Backs)"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Formation Gallery</span>
-              <span className="sm:hidden">Formations</span>
-            </button>
-
-            <button
-              id="top-defense-scout-btn"
-              onClick={() => setIsDefensiveScoutOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold border border-rose-500 flex items-center gap-1.5 transition-all shadow-sm shadow-rose-600/20 active:scale-95 cursor-pointer"
-              title="Open Defensive Scout & Coverage Lab (Cover 0-6, Bracket, Match)"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Defensive Scout</span>
-              <span className="sm:hidden">Defense</span>
-              {defenseScheme && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-rose-800 text-rose-100">
-                  {defenseScheme.shortName}
-                </span>
-              )}
-            </button>
-
-            <button
-              id="top-roster-management-btn"
-              onClick={() => setIsRosterOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold border border-blue-500 flex items-center gap-1.5 transition-all shadow-sm shadow-blue-600/20 active:scale-95 cursor-pointer"
-              title="Manage 8v8 Roster, Depth Chart & Player Jersey Numbers"
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Roster &amp; Jerseys</span>
-              <span className="sm:hidden">Roster</span>
-              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-blue-800 text-blue-100">
-                {roster.filter((p) => p.assignedSlot).length}/8
-              </span>
-            </button>
-
-            <button
-              id="top-coaching-tips-btn"
-              onClick={() => setIsCoachingTipsOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black border border-amber-400 flex items-center gap-1.5 transition-all shadow-sm shadow-amber-500/20 active:scale-95 cursor-pointer"
-              title="Open Route Concept Video Tutorials & Coaching Tips Modal"
-            >
-              <GraduationCap className="w-3.5 h-3.5 text-slate-950" />
-              <span className="hidden sm:inline">Coaching Tips &amp; Video</span>
-              <span className="sm:hidden">Tips &amp; Video</span>
-            </button>
-
-            <button
-              onClick={() => setIsRouteTreeOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-blue-700 font-medium border border-slate-200 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-blue-600" />
-              <span className="hidden sm:inline">Route Tree (0-9)</span>
-              <span className="sm:hidden">Routes</span>
-            </button>
-
-            <button
-              onClick={() => setIsGlossaryOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100/80 text-amber-800 font-medium border border-amber-200 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-            >
-              <Languages className="w-3.5 h-3.5 text-amber-600" />
-              <span className="hidden sm:inline">EN-FI Glossary</span>
-              <span className="sm:hidden">Sanasto</span>
-            </button>
-
-            <button
-              onClick={() => setIsQuizOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100/80 text-purple-800 font-medium border border-purple-200 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-            >
-              <Zap className="w-3.5 h-3.5 text-purple-600" />
-              <span>Quiz Mode</span>
-            </button>
-
-            <button
-              id="top-drill-generator-btn"
-              onClick={() => setIsDrillsOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold border border-amber-400 flex items-center gap-1.5 transition-all shadow-sm shadow-amber-500/20 active:scale-95 cursor-pointer"
-              title="Generate practice drills matched to currently selected play"
-            >
-              <Dumbbell className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Drill Generator</span>
-              <span className="sm:hidden">Drills</span>
-            </button>
-
-            <button
-              onClick={() => setIsWhiteboardOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold flex items-center gap-1.5 transition-all shadow-sm shadow-emerald-600/20 active:scale-95 cursor-pointer"
-            >
-              <PenTool className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Draw Whiteboard</span>
-              <span className="sm:hidden">Draw</span>
-            </button>
-
-            <button
-              onClick={() => setIsDesignerOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-indigo-700 font-semibold border border-slate-200 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="hidden sm:inline">Play Designer</span>
-              <span className="sm:hidden">Designer</span>
-            </button>
-
-            <button
-              id="top-game-plan-stats-btn"
-              onClick={() => setIsGamePlanStatsOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100/90 text-purple-800 font-bold border border-purple-200 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-              title="Visualize Usage Statistics for Game Plan Plays (Bar Chart)"
-            >
-              <BarChart3 className="w-3.5 h-3.5 text-purple-600" />
-              <span className="hidden sm:inline">Game Plan Stats</span>
-              <span className="sm:hidden">Stats</span>
-            </button>
-
-            <button
-              id="top-print-layout-btn"
-              onClick={() => setIsPrintLayoutOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100/90 text-blue-800 font-bold border border-blue-200 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-              title="Open clean, printer-friendly A4 / Letter installation layout"
-            >
-              <Printer className="w-3.5 h-3.5 text-blue-600" />
-              <span className="hidden sm:inline">Print Layout</span>
-              <span className="sm:hidden">Print</span>
-            </button>
-
-            <button
-              onClick={() => setIsWristbandOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium border border-slate-200 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-            >
-              <FileDown className="w-3.5 h-3.5 text-slate-600" />
-              <span className="hidden sm:inline">Wristband Call Sheet</span>
-              <span className="sm:hidden">Wristband</span>
-            </button>
-          </div>
-        </div>
-      </header>
+      {/* Modern, Categorized & Responsive Top Navigation Bar */}
+      <TopNavbar
+        roster={roster}
+        defenseScheme={defenseScheme}
+        totalPlaysCount={ALL_PLAYBOOK_PLAYS.length}
+        isAudibleBarOpen={isAudibleBarOpen}
+        onToggleAudibles={() => setIsAudibleBarOpen(!isAudibleBarOpen)}
+        onOpenFormationGallery={() => setIsFormationGalleryOpen(true)}
+        onOpenDefensiveScout={() => setIsDefensiveScoutOpen(true)}
+        onOpenRoster={() => setIsRosterOpen(true)}
+        onOpenCoachingTips={() => setIsCoachingTipsOpen(true)}
+        onOpenRouteTree={() => setIsRouteTreeOpen(true)}
+        onOpenGlossary={() => setIsGlossaryOpen(true)}
+        onOpenQuiz={() => setIsQuizOpen(true)}
+        onOpenDrills={() => setIsDrillsOpen(true)}
+        onOpenWhiteboard={() => setIsWhiteboardOpen(true)}
+        onOpenDesigner={() => setIsDesignerOpen(true)}
+        onOpenGamePlanStats={() => setIsGamePlanStatsOpen(true)}
+        onOpenPrintLayout={() => setIsPrintLayoutOpen(true)}
+        onOpenWristband={() => setIsWristbandOpen(true)}
+        onOpenCallSheet={() => setIsCallSheetOpen(true)}
+        onOpenComparison={() => setIsComparisonOpen(true)}
+        onOpenTendency={() => setIsTendencyOpen(true)}
+        onOpenFlashcardsQuiz={() => setIsFlashcardsQuizOpen(true)}
+      />
 
       {/* Main Content Workspace (1.5x Scaled Layout & Wide View, 100% Responsive) */}
       <main className={`flex-1 max-w-[1720px] w-full mx-auto p-3 sm:p-4 md:p-6 lg:p-7 min-w-0 ${
@@ -591,6 +439,22 @@ export default function App() {
       }`}>
         {/* Left / Center Column: Field Board & Controller (7 cols on lg, 7-8 cols on xl) */}
         <div className={`${boardScale === 'theater' ? 'w-full' : 'lg:col-span-7 xl:col-span-7 2xl:col-span-8'} space-y-5 min-w-0 w-full`}>
+          {/* ESPN / Sunday Night Football Style Broadcast Scorebug & Live Telemetry HUD */}
+          <BroadcastScorebug
+            play={selectedPlay}
+            progress={progress}
+            isPlaying={isPlaying}
+            onTogglePlay={handleTogglePlay}
+            onReset={handleResetAnimation}
+            isMuted={isSoundMuted}
+            onToggleMute={() => {
+              const next = !isSoundMuted;
+              setIsSoundMuted(next);
+              footballAudio.setMuted(next);
+            }}
+            onAudibleTrigger={() => setIsAudibleBarOpen(true)}
+          />
+
           {/* Interactive Tactical Field Board */}
           <FieldBoard
             play={selectedPlay}
@@ -635,6 +499,18 @@ export default function App() {
             showDrillCones={showDrillCones}
             onToggleShowDrillCones={() => setShowDrillCones(!showDrillCones)}
           />
+
+          {/* Pre-Snap Audible & Hot-Route Switch Bar */}
+          {isAudibleBarOpen && (
+            <PreSnapAudibleBar
+              activePlay={selectedPlay}
+              onSelectAudiblePlay={(audiblePlay) => {
+                handleSelectPlay(audiblePlay);
+                setIsAudibleBarOpen(false);
+              }}
+              onClose={() => setIsAudibleBarOpen(false)}
+            />
+          )}
 
           {/* Interactive Animation Controller */}
           <AnimationController
@@ -828,6 +704,30 @@ export default function App() {
         onClose={() => setIsFormationGalleryOpen(false)}
         onSelectPlay={(play) => setSelectedPlay(play)}
         currentSelectedPlay={selectedPlay}
+      />
+
+      <CallSheetBuilderModal
+        isOpen={isCallSheetOpen}
+        onClose={() => setIsCallSheetOpen(false)}
+        onSelectPlay={(play) => handleSelectPlay(play)}
+      />
+
+      <PlayComparisonModal
+        isOpen={isComparisonOpen}
+        onClose={() => setIsComparisonOpen(false)}
+        activePlay={selectedPlay}
+        onSelectPlay={(play) => handleSelectPlay(play)}
+      />
+
+      <OffensiveTendencyModal
+        isOpen={isTendencyOpen}
+        onClose={() => setIsTendencyOpen(false)}
+        onSelectPlay={(play) => handleSelectPlay(play)}
+      />
+
+      <PlayerQuizFlashcardsModal
+        isOpen={isFlashcardsQuizOpen}
+        onClose={() => setIsFlashcardsQuizOpen(false)}
       />
     </div>
   );

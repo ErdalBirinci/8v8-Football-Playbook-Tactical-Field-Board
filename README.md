@@ -1,11 +1,17 @@
-# 🏈 Aalto Predators 8v8 Playbook & Tactical Interactive System
+<p align="center">
+  <img src="public/aalto-predators-logo.svg" alt="Aalto Predators Logo" width="160" height="160" />
+</p>
 
-[![React](https://img.shields.io/badge/React-19.0-blue.svg?style=flat-square&logo=react)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-6.2-purple.svg?style=flat-square&logo=vite)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.1-38bdf8.svg?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
-[![League](https://img.shields.io/badge/League-Finland_University_League_(8v8)-red.svg?style=flat-square)](https://www.sajl.fi/)
+<h1 align="center">🏈 Aalto Predators 8v8 Playbook & Tactical Interactive System</h1>
+
+<p align="center">
+  <a href="https://reactjs.org/"><img src="https://img.shields.io/badge/React-19.0-blue.svg?style=flat-square&logo=react" alt="React" /></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.8-blue.svg?style=flat-square&logo=typescript" alt="TypeScript" /></a>
+  <a href="https://vitejs.dev/"><img src="https://img.shields.io/badge/Vite-6.2-purple.svg?style=flat-square&logo=vite" alt="Vite" /></a>
+  <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/Tailwind_CSS-4.1-38bdf8.svg?style=flat-square&logo=tailwindcss" alt="Tailwind CSS" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=flat-square" alt="License" /></a>
+  <a href="https://www.sajl.fi/"><img src="https://img.shields.io/badge/League-Finland_University_League_(8v8)-red.svg?style=flat-square" alt="League" /></a>
+</p>
 
 An advanced, interactive tactical playbook, vector animation diagramming engine, and comprehensive coaching operations suite developed for the **Aalto Predators (Aalto University American Football)** competing in the **Finland University League (*Korkeakoulusarja*)** under the **SAJL (Suomen Amerikkalaisen Jalkapallon Liitto)** framework.
 
