@@ -79,6 +79,9 @@ export default function App() {
   // Coaching tips & Video overlay state
   const [isCoachingTipsOpen, setIsCoachingTipsOpen] = useState(false);
   const [isCoachingOverlayOpen, setIsCoachingOverlayOpen] = useState(false);
+  const [showTargetingHeatmap, setShowTargetingHeatmap] = useState(false);
+  const [heatmapSensitivity, setHeatmapSensitivity] = useState(1.0);
+  const [heatmapTimeTracking, setHeatmapTimeTracking] = useState(true);
   const [activeRouteConceptId, setActiveRouteConceptId] = useState<string | undefined>(undefined);
   const [boardScale, setBoardScale] = useState<'1.0x' | '1.5x' | 'theater'>('1.5x');
 
@@ -498,6 +501,11 @@ export default function App() {
             onExitDrillTraining={handleExitDrillTraining}
             showDrillCones={showDrillCones}
             onToggleShowDrillCones={() => setShowDrillCones(!showDrillCones)}
+            showTargetingHeatmap={showTargetingHeatmap}
+            onToggleTargetingHeatmap={(show) => setShowTargetingHeatmap(show)}
+            heatmapSensitivity={heatmapSensitivity}
+            heatmapTimeTracking={heatmapTimeTracking}
+            onToggleHeatmapTimeTracking={() => setHeatmapTimeTracking(!heatmapTimeTracking)}
           />
 
           {/* Pre-Snap Audible & Hot-Route Switch Bar */}
@@ -561,6 +569,12 @@ export default function App() {
             onUpdatePlayCues={handleUpdatePlayCues}
             onOpenDefensiveScout={() => setIsDefensiveScoutOpen(true)}
             activeDefenseScheme={defenseScheme}
+            showTargetingHeatmap={showTargetingHeatmap}
+            onToggleTargetingHeatmap={() => setShowTargetingHeatmap(!showTargetingHeatmap)}
+            heatmapSensitivity={heatmapSensitivity}
+            onHeatmapSensitivityChange={setHeatmapSensitivity}
+            heatmapTimeTracking={heatmapTimeTracking}
+            onToggleHeatmapTimeTracking={() => setHeatmapTimeTracking(!heatmapTimeTracking)}
           />
         </div>
 

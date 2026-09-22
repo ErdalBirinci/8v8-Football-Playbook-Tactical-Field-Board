@@ -298,3 +298,51 @@ export interface DrillTrainingSession {
   cones: DrillCone[];
 }
 
+export interface TargetingHeatZone {
+  id: string;
+  readOrder: number; // 1, 2, 3, etc.
+  playerId: string; // 'X', 'Z', 'Y', 'H', 'RB', etc.
+  playerLabel: string;
+  positionName: string;
+  routeName: string;
+  cx: number; // 0 - 100 on field SVG
+  cy: number; // 0 - 100 on field SVG (Line of Scrimmage is 65)
+  rx: number; // horizontal spread
+  ry: number; // vertical depth
+  depthYards: number; // yards from Line of Scrimmage
+  successProbability: number; // 0 - 100 percentage
+  epaTier: 'PRIMARY_RHYTHM' | 'INTERMEDIATE_CHAIN_MOVER' | 'SAFETY_VALVE' | 'EXPLOSIVE_SHOT';
+  tierLabel: string;
+  tacticalNote: string;
+  coverageAdvantage: string;
+  color: string;
+  gradientId: string;
+  // Dynamic play timeline tracking metrics
+  liveSeparationYards?: number;
+  coverageStatus?: string;
+  targetPhase?: 'STEM' | 'BREAK' | 'OPEN_WINDOW' | 'SQUEEZED' | 'CHECKDOWN';
+  receiverLivePos?: { x: number; y: number };
+  nearestDefenderName?: string;
+  nearestDefenderDist?: number;
+}
+
+export interface TargetingHeatMapAnalysis {
+  playId: string;
+  playCode: string;
+  overallRating: number; // 0 - 100 overall passing progression efficiency
+  primaryWindowSuccess: number; // e.g. 84%
+  checkdownSafetyRating: number; // e.g. 89%
+  deepShotPotential: number; // e.g. 68%
+  bestCoverageMismatch: string;
+  timingCues: string[];
+  zones: TargetingHeatZone[];
+  sensitivity?: number; // e.g. 1.0 (range: 0.5 to 1.5)
+  highThreshold?: number; // threshold for Red (e.g. 78%)
+  moderateThreshold?: number; // threshold for Yellow (e.g. 65%)
+  isTimeTrackingActive?: boolean;
+  timelineProgress?: number; // 0.0 - 1.0
+  playTimeSeconds?: number; // e.g. 1.8s
+  timelinePhaseDescription?: string;
+  coverageShiftSummary?: string;
+}
+

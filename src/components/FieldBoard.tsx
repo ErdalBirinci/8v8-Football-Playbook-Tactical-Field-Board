@@ -43,6 +43,7 @@ import { getTeamBranding } from '../utils/teamBranding';
 import { footballAudio } from '../utils/audioSynthesizer';
 import { TelestratorCanvas } from './TelestratorCanvas';
 import { MeasurementCaliper, CaliperPoint } from './MeasurementCaliper';
+import { analyzeTargetingHeatMap } from '../utils/targetingHeatmapAnalysis';
 
 interface FieldBoardProps {
   play: Play;
@@ -84,6 +85,11 @@ interface FieldBoardProps {
   onExitDrillTraining?: () => void;
   showDrillCones?: boolean;
   onToggleShowDrillCones?: () => void;
+  showTargetingHeatmap?: boolean;
+  onToggleTargetingHeatmap?: (show: boolean) => void;
+  heatmapSensitivity?: number;
+  heatmapTimeTracking?: boolean;
+  onToggleHeatmapTimeTracking?: () => void;
 }
 
 export const FieldBoard: React.FC<FieldBoardProps> = ({
@@ -125,6 +131,11 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
   onExitDrillTraining,
   showDrillCones = true,
   onToggleShowDrillCones,
+  showTargetingHeatmap: controlledShowHeatmap,
+  onToggleTargetingHeatmap,
+  heatmapSensitivity = 1.0,
+  heatmapTimeTracking: controlledHeatmapTimeTracking,
+  onToggleHeatmapTimeTracking,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -133,7 +144,45 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
 
   // Advanced Visual & Functional State
   const [is3DAngle, setIs3DAngle] = useState(false);
-  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [internalHeatmap, setInternalHeatmap] = useState(false);
+  const showHeatmap = controlledShowHeatmap !== undefined ? controlledShowHeatmap : internalHeatmap;
+
+  const [internalHeatmapTimeTracking, setInternalHeatmapTimeTracking] = useState(true);
+  const isHeatmapTimeTracking = controlledHeatmapTimeTracking !== undefined
+    ? controlledHeatmapTimeTracking
+    : internalHeatmapTimeTracking;
+
+  const handleToggleHeatmapTimeTracking = () => {
+    if (onToggleHeatmapTimeTracking) {
+      onToggleHeatmapTimeTracking();
+    } else {
+      setInternalHeatmapTimeTracking(!internalHeatmapTimeTracking);
+    }
+  };
+
+  const handleToggleHeatmap = () => {
+    const nextVal = !showHeatmap;
+    if (onToggleTargetingHeatmap) {
+      onToggleTargetingHeatmap(nextVal);
+    } else {
+      setInternalHeatmap(nextVal);
+    }
+  };
+
+  // Targeting Heat Map Analysis (Route progression success probability zones)
+  // When isHeatmapTimeTracking is enabled, success probabilities and heat colors update
+  // dynamically as the play animation progresses (progress 0.0 to 1.0).
+  const targetingAnalysis = useMemo(() => {
+    return analyzeTargetingHeatMap(
+      play,
+      defenseScheme,
+      roster,
+      heatmapSensitivity,
+      progress,
+      isHeatmapTimeTracking
+    );
+  }, [play, defenseScheme, roster, heatmapSensitivity, progress, isHeatmapTimeTracking]);
+
   const [showGhostTrails, setShowGhostTrails] = useState(true);
   const [audibleActive, setAudibleActive] = useState(false);
   const [teamBranding, setTeamBranding] = useState(() => getTeamBranding());
@@ -641,7 +690,45 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
 
-          {/* Route Heatmap Radial Gradients */}
+          {/* Targeting Progression Heat Map Radial Gradients */}
+          <radialGradient id="heat-gradient-crimson" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#ef4444" stopOpacity="0.88" />
+            <stop offset="38%" stopColor="#f97316" stopOpacity="0.55" />
+            <stop offset="72%" stopColor="#eab308" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#ef4444" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="heat-gradient-orange" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#f97316" stopOpacity="0.84" />
+            <stop offset="40%" stopColor="#f59e0b" stopOpacity="0.50" />
+            <stop offset="75%" stopColor="#10b981" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#f97316" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="heat-gradient-amber" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.82" />
+            <stop offset="45%" stopColor="#eab308" stopOpacity="0.45" />
+            <stop offset="80%" stopColor="#38bdf8" stopOpacity="0.15" />
+            <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="heat-gradient-emerald" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#10b981" stopOpacity="0.82" />
+            <stop offset="45%" stopColor="#06b6d4" stopOpacity="0.45" />
+            <stop offset="80%" stopColor="#3b82f6" stopOpacity="0.15" />
+            <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="heat-gradient-purple" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#a855f7" stopOpacity="0.85" />
+            <stop offset="45%" stopColor="#ec4899" stopOpacity="0.48" />
+            <stop offset="80%" stopColor="#6366f1" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="#a855f7" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="heat-gradient-blue" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.82" />
+            <stop offset="45%" stopColor="#3b82f6" stopOpacity="0.48" />
+            <stop offset="80%" stopColor="#1e3a8a" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="#38bdf8" stopOpacity="0" />
+          </radialGradient>
+
+          {/* Legacy Fallback Route Heatmap Radial Gradients */}
           <radialGradient id="heat-deep-middle" cx="50%" cy="40%" r="50%">
             <stop offset="0%" stopColor="#ef4444" stopOpacity="0.85" />
             <stop offset="45%" stopColor="#f59e0b" stopOpacity="0.5" />
@@ -678,15 +765,279 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           }
         />
 
-        {/* Dynamic Route Heatmap Overlay */}
-        {showHeatmap && (
-          <g id="route-heatmap-overlay" opacity="0.55" className="pointer-events-none transition-opacity duration-300">
-            <ellipse cx="50" cy="28" rx="38" ry="16" fill="url(#heat-deep-middle)" />
-            <ellipse cx="22" cy="40" rx="18" ry="14" fill="url(#heat-boundary-left)" />
-            <ellipse cx="78" cy="40" rx="18" ry="14" fill="url(#heat-boundary-right)" />
-            <ellipse cx="50" cy="55" rx="44" ry="9" fill="url(#heat-flat-underneath)" />
+        {/* Dynamic Route Progression Targeting Heat Map Overlay with Smooth CSS Fade-In/Fade-Out */}
+        <g
+          id="route-targeting-heatmap-overlay"
+          style={{
+            opacity: showHeatmap ? 1 : 0,
+            visibility: showHeatmap ? 'visible' : 'hidden',
+            transition: 'opacity 350ms cubic-bezier(0.16, 1, 0.3, 1), visibility 350ms',
+            pointerEvents: showHeatmap ? 'auto' : 'none',
+          }}
+        >
+          {/* Live Dynamic Route Tethers between Receiver and Target Zone (when timeline sync is active) */}
+          {isHeatmapTimeTracking && targetingAnalysis.zones.map((zone) => {
+            if (!zone.receiverLivePos) return null;
+            return (
+              <g key={`dynamic-tether-${zone.id}`} className="pointer-events-none">
+                <line
+                  x1={zone.receiverLivePos.x}
+                  y1={zone.receiverLivePos.y}
+                  x2={zone.cx}
+                  y2={zone.cy}
+                  stroke={zone.color}
+                  strokeWidth="0.4"
+                  strokeDasharray="1.2,1.2"
+                  opacity="0.65"
+                  className="transition-colors duration-200"
+                />
+                <circle
+                  cx={zone.receiverLivePos.x}
+                  cy={zone.receiverLivePos.y}
+                  r="0.7"
+                  fill={zone.color}
+                  opacity="0.8"
+                />
+              </g>
+            );
+          })}
+
+          {/* 1. Thermal Probability Dispersion Blobs */}
+          {targetingAnalysis.zones.map((zone) => {
+            const isSelected = selectedPlayerId === zone.playerId;
+            return (
+              <g key={`heat-zone-blob-${zone.id}`} className="pointer-events-none">
+                {/* Outer Thermal Glow Halo */}
+                <ellipse
+                  cx={zone.cx}
+                  cy={zone.cy}
+                  rx={zone.rx * 1.15}
+                  ry={zone.ry * 1.15}
+                  fill={`url(#${zone.gradientId})`}
+                  opacity={isSelected ? 0.95 : 0.72}
+                  className="transition-all duration-300"
+                />
+
+                {/* Concentric Isolines / Probability Contours */}
+                <ellipse
+                  cx={zone.cx}
+                  cy={zone.cy}
+                  rx={zone.rx * 0.95}
+                  ry={zone.ry * 0.95}
+                  fill="none"
+                  stroke={zone.color}
+                  strokeWidth="0.4"
+                  strokeDasharray="2,2"
+                  opacity={isSelected ? 0.7 : 0.4}
+                  className="transition-all duration-300"
+                />
+                <ellipse
+                  cx={zone.cx}
+                  cy={zone.cy}
+                  rx={zone.rx * 0.55}
+                  ry={zone.ry * 0.55}
+                  fill="none"
+                  stroke={zone.color}
+                  strokeWidth="0.6"
+                  strokeDasharray="1.5,1.5"
+                  opacity={isSelected ? 0.9 : 0.6}
+                  className="transition-all duration-300"
+                />
+              </g>
+            );
+          })}
+
+          {/* 2. Precision Targeting Crosshairs, Badges & Interactive Zone Callouts */}
+          {targetingAnalysis.zones.map((zone) => {
+            const isSelected = selectedPlayerId === zone.playerId;
+            return (
+              <g
+                key={`heat-zone-callout-${zone.id}`}
+                className="cursor-pointer transition-transform hover:scale-105 active:scale-95"
+                onClick={() => onSelectPlayer?.(zone.playerId)}
+              >
+                {/* Outer Targeting Crosshair Reticle */}
+                <circle
+                  cx={zone.cx}
+                  cy={zone.cy}
+                  r={isSelected ? 2.8 : 2.2}
+                  fill="none"
+                  stroke={zone.color}
+                  strokeWidth={isSelected ? '0.7' : '0.5'}
+                  strokeDasharray={isSelected ? 'none' : '1.5,1'}
+                  className={`transition-colors duration-200 ${isSelected ? 'animate-spin origin-center' : ''}`}
+                />
+                {/* Crosshair Ticks */}
+                <line
+                  x1={zone.cx - 3.4}
+                  y1={zone.cy}
+                  x2={zone.cx - 1.4}
+                  y2={zone.cy}
+                  stroke={zone.color}
+                  strokeWidth="0.5"
+                  className="transition-colors duration-200"
+                />
+                <line
+                  x1={zone.cx + 1.4}
+                  y1={zone.cy}
+                  x2={zone.cx + 3.4}
+                  y2={zone.cy}
+                  stroke={zone.color}
+                  strokeWidth="0.5"
+                  className="transition-colors duration-200"
+                />
+                <line
+                  x1={zone.cx}
+                  y1={zone.cy - 3.4}
+                  x2={zone.cx}
+                  y2={zone.cy - 1.4}
+                  stroke={zone.color}
+                  strokeWidth="0.5"
+                  className="transition-colors duration-200"
+                />
+                <line
+                  x1={zone.cx}
+                  y1={zone.cy + 1.4}
+                  x2={zone.cx}
+                  y2={zone.cy + 3.4}
+                  stroke={zone.color}
+                  strokeWidth="0.5"
+                  className="transition-colors duration-200"
+                />
+                {/* Center Bullseye Pip */}
+                <circle
+                  cx={zone.cx}
+                  cy={zone.cy}
+                  r="0.8"
+                  fill={zone.color}
+                  className="animate-pulse transition-colors duration-200"
+                />
+
+                {/* Telemetry Tag Chip */}
+                <g transform={`translate(${zone.cx}, ${zone.cy - 4.8})`}>
+                  {/* Badge Backdrop */}
+                  <rect
+                    x="-15"
+                    y="-4.4"
+                    width="30"
+                    height="5.8"
+                    rx="1.4"
+                    fill="rgba(15, 23, 42, 0.94)"
+                    stroke={zone.color}
+                    strokeWidth={isSelected ? '0.75' : '0.45'}
+                    className="shadow-lg filter drop-shadow-md transition-colors duration-200"
+                  />
+
+                  {/* Top line: Read Order + Probability % + Live Window Phase */}
+                  <text
+                    x="0"
+                    y="-1.9"
+                    textAnchor="middle"
+                    fontSize="1.85"
+                    fontWeight="bold"
+                    fill={zone.color}
+                    className="font-mono tracking-tight transition-colors duration-200"
+                  >
+                    READ #{zone.readOrder} • {zone.successProbability}%{' '}
+                    {isHeatmapTimeTracking && zone.targetPhase
+                      ? `(${zone.targetPhase === 'OPEN_WINDOW' ? 'OPEN' : zone.targetPhase === 'CHECKDOWN' ? 'SAFETY' : zone.targetPhase === 'STEM' ? 'STEM' : 'CONTEST'})`
+                      : 'PROB'}
+                  </text>
+
+                  {/* Bottom line: Target Player + Separation/Depth */}
+                  <text
+                    x="0"
+                    y="0.5"
+                    textAnchor="middle"
+                    fontSize="1.5"
+                    fontWeight="bold"
+                    fill="#e2e8f0"
+                    className="font-sans"
+                  >
+                    {zone.playerLabel}{' '}
+                    {isHeatmapTimeTracking && zone.liveSeparationYards !== undefined
+                      ? `(Sep: +${zone.liveSeparationYards}y • ${zone.depthYards}y)`
+                      : `(${zone.depthYards}y ${zone.routeName.split(' ')[0]})`}
+                  </text>
+                </g>
+              </g>
+            );
+          })}
+
+          {/* 3. On-Field Canvas Heat Map Color Intensity & Timeline Sync Legend */}
+          <g
+            id="heatmap-svg-legend"
+            transform="translate(3, 90.0)"
+            className="select-none cursor-pointer"
+            onClick={handleToggleHeatmapTimeTracking}
+          >
+            <rect
+              x="0"
+              y="0"
+              width="63"
+              height="8.4"
+              rx="1.4"
+              fill="rgba(15, 23, 42, 0.94)"
+              stroke="#eab308"
+              strokeWidth="0.35"
+            />
+            {/* Header row: Heatmap label + dynamic timeline toggle pill */}
+            <text
+              x="2.2"
+              y="2.5"
+              fontSize="1.15"
+              fontWeight="bold"
+              fill="#fde047"
+              className="font-mono tracking-wider"
+            >
+              HEATMAP INTENSITY
+            </text>
+
+            <rect
+              x="25"
+              y="1.0"
+              width="36"
+              height="2.4"
+              rx="0.7"
+              fill={isHeatmapTimeTracking ? 'rgba(6, 78, 59, 0.92)' : 'rgba(30, 41, 59, 0.92)'}
+              stroke={isHeatmapTimeTracking ? '#10b981' : '#64748b'}
+              strokeWidth="0.25"
+            />
+            <circle
+              cx="27.2"
+              cy="2.2"
+              r="0.5"
+              fill={isHeatmapTimeTracking ? '#34d399' : '#94a3b8'}
+              className={isHeatmapTimeTracking ? 'animate-pulse' : ''}
+            />
+            <text
+              x="29.2"
+              y="2.5"
+              fontSize="0.95"
+              fontWeight="bold"
+              fill={isHeatmapTimeTracking ? '#6ee7b7' : '#cbd5e1'}
+              className="font-mono"
+            >
+              {isHeatmapTimeTracking
+                ? `TIMELINE SYNC (${(progress * 3.5).toFixed(1)}s): LIVE`
+                : 'ANIMATION SYNC: OFF (CLICK TO ON)'}
+            </text>
+
+            {/* Threshold Indicators */}
+            <circle cx="3.2" cy="5.8" r="1.0" fill="#ef4444" />
+            <text x="4.8" y="6.2" fontSize="1.05" fontWeight="bold" fill="#fca5a5" className="font-mono">
+              Red: High (≥{targetingAnalysis.highThreshold ?? 78}%)
+            </text>
+            <circle cx="23" cy="5.8" r="1.0" fill="#eab308" />
+            <text x="24.6" y="6.2" fontSize="1.05" fontWeight="bold" fill="#fef08a" className="font-mono">
+              Yellow: Mod ({targetingAnalysis.moderateThreshold ?? 65}–{(targetingAnalysis.highThreshold ?? 78) - 1}%)
+            </text>
+            <circle cx="44.5" cy="5.8" r="1.0" fill="#38bdf8" />
+            <text x="46.1" y="6.2" fontSize="1.05" fontWeight="bold" fill="#bae6fd" className="font-mono">
+              Blue: Low (&lt;{targetingAnalysis.moderateThreshold ?? 65}%)
+            </text>
           </g>
-        )}
+        </g>
 
         {/* Defensive Coverage Zone Shadows */}
         {showZones && defenseScheme && (
@@ -2026,15 +2377,15 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
         {/* Heatmap Overlay Toggle Button */}
         <button
           id="fieldboard-heatmap-toggle-btn"
-          onClick={() => setShowHeatmap(!showHeatmap)}
-          title="Toggle Target Route Heatmap Density Overlay"
-          className={`backdrop-blur-md min-h-[36px] px-2.5 py-1.5 rounded-xl shadow-lg flex items-center gap-1 text-xs font-bold transition-all active:scale-95 border cursor-pointer touch-manipulation ${
+          onClick={handleToggleHeatmap}
+          title="Toggle Target Route Progression Heat Map Overlay"
+          className={`backdrop-blur-md min-h-[36px] px-2.5 py-1.5 rounded-xl shadow-lg flex items-center gap-1.5 text-xs font-bold transition-all active:scale-95 border cursor-pointer touch-manipulation ${
             showHeatmap
-              ? 'bg-amber-600 text-white border-amber-400 shadow-amber-950/40'
+              ? 'bg-gradient-to-r from-rose-600 to-amber-600 text-white border-amber-300 shadow-amber-950/40 ring-1 ring-amber-400'
               : 'bg-slate-900/85 hover:bg-slate-800 text-slate-300 hover:text-white border-slate-700/60 shadow-slate-950/40'
           }`}
         >
-          <Flame className="w-3.5 h-3.5 text-amber-400" />
+          <Flame className={`w-3.5 h-3.5 ${showHeatmap ? 'text-amber-200 animate-pulse' : 'text-amber-400'}`} />
           <span className="hidden sm:inline">Heatmap</span>
         </button>
 
@@ -2221,6 +2572,109 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
           >
             {(progress * 3.5).toFixed(1)}s
           </span>
+        </div>
+      )}
+
+      {/* Floating Targeting Progression Heat Map HUD Telemetry & Color Intensity Legend */}
+      {showHeatmap && (
+        <div
+          id="fieldboard-targeting-heatmap-hud"
+          className="absolute top-14 left-3 bg-slate-950/95 backdrop-blur-md border border-amber-500/70 rounded-xl px-3 py-2 shadow-2xl z-20 text-xs font-mono animate-in fade-in slide-in-from-top-1 duration-150 space-y-1.5 max-w-sm sm:max-w-none"
+        >
+          {/* Top Row: Title, Key Progression Telemetry & Close */}
+          <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-1.5 text-amber-400 font-black">
+              <Flame className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+              <span className="hidden sm:inline">TARGETING HEAT MAP</span>
+              <span className="sm:hidden">HEAT MAP</span>
+            </div>
+
+            <div className="h-3.5 w-px bg-slate-700 hidden sm:block" />
+
+            {/* Dynamic Timeline Animation Sync Badge */}
+            <button
+              type="button"
+              onClick={handleToggleHeatmapTimeTracking}
+              className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                isHeatmapTimeTracking
+                  ? 'bg-emerald-950/80 text-emerald-400 border-emerald-500/60'
+                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+              }`}
+              title="Toggle dynamic play timeline animation sync (success probability updates live with play progress)"
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${isHeatmapTimeTracking ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+              <span>{isHeatmapTimeTracking ? `SYNC (${(progress * 3.5).toFixed(1)}s)` : 'STATIC'}</span>
+            </button>
+
+            <div className="flex items-center gap-2 text-[11px]">
+              <span className="text-slate-300">
+                Read #1:{' '}
+                <strong className="text-rose-400 font-bold">
+                  {targetingAnalysis.primaryWindowSuccess}%
+                </strong>
+              </span>
+              <span className="text-slate-500">•</span>
+              <span className="text-slate-300">
+                Checkdown:{' '}
+                <strong className="text-emerald-400 font-bold">
+                  {targetingAnalysis.checkdownSafetyRating}%
+                </strong>
+              </span>
+              {targetingAnalysis.deepShotPotential > 0 && (
+                <>
+                  <span className="text-slate-500 hidden md:inline">•</span>
+                  <span className="text-slate-300 hidden md:inline">
+                    Deep:{' '}
+                    <strong className="text-purple-400 font-bold">
+                      {targetingAnalysis.deepShotPotential}%
+                    </strong>
+                  </span>
+                </>
+              )}
+            </div>
+
+            <button
+              onClick={handleToggleHeatmap}
+              className="ml-auto text-slate-400 hover:text-white text-xs cursor-pointer p-0.5 rounded hover:bg-slate-800 transition-colors"
+              title="Close Heat Map Overlay"
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Bottom Row: Color Intensity Legend */}
+          <div
+            id="heatmap-color-intensity-legend"
+            className="pt-1.5 border-t border-slate-800/80 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px]"
+          >
+            <span className="text-slate-400 font-bold uppercase tracking-wider text-[9px]">
+              Color Intensity:
+            </span>
+
+            {/* Red = High Success */}
+            <div className="flex items-center gap-1.5" title={`Red indicates high completion success (≥${targetingAnalysis.highThreshold ?? 78}%)`}>
+              <span className="w-2.5 h-2.5 rounded-full bg-rose-500 ring-1 ring-rose-400/80 shadow-xs inline-block shrink-0" />
+              <span className="text-slate-200">
+                <strong className="text-rose-400 font-bold">Red</strong> = High Success <span className="text-slate-400 font-mono text-[9px]">(≥{targetingAnalysis.highThreshold ?? 78}%)</span>
+              </span>
+            </div>
+
+            {/* Yellow = Moderate */}
+            <div className="flex items-center gap-1.5" title={`Yellow indicates moderate completion success (${targetingAnalysis.moderateThreshold ?? 65}%–${(targetingAnalysis.highThreshold ?? 78) - 1}%)`}>
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400 ring-1 ring-amber-300/80 shadow-xs inline-block shrink-0" />
+              <span className="text-slate-200">
+                <strong className="text-amber-400 font-bold">Yellow</strong> = Moderate <span className="text-slate-400 font-mono text-[9px]">({targetingAnalysis.moderateThreshold ?? 65}–{(targetingAnalysis.highThreshold ?? 78) - 1}%)</span>
+              </span>
+            </div>
+
+            {/* Blue = Low */}
+            <div className="flex items-center gap-1.5" title={`Blue indicates lower completion success / contested (<${targetingAnalysis.moderateThreshold ?? 65}%)`}>
+              <span className="w-2.5 h-2.5 rounded-full bg-sky-400 ring-1 ring-sky-300/80 shadow-xs inline-block shrink-0" />
+              <span className="text-slate-200">
+                <strong className="text-sky-400 font-bold">Blue</strong> = Low <span className="text-slate-400 font-mono text-[9px]">(&lt;{targetingAnalysis.moderateThreshold ?? 65}%)</span>
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
