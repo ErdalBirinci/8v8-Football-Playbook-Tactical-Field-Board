@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Play, DefensivePlayer, DefenseScheme, PlayerAssignment, RosterPlayer, TokenDisplayMode, DrillTrainingSession, DrillCone } from '../types';
-import { getPlayerAssignedToSlot } from '../data/rosterData';
+import { getPlayerAssignedToSlot, SAMPLE_ATHLETE_NAMES } from '../data/rosterData';
 import { getPlayCoachingCues } from '../utils/coachingCuesStorage';
 import {
   detectConceptsForPlay,
@@ -2254,13 +2254,17 @@ export const FieldBoard: React.FC<FieldBoardProps> = ({
               </div>
               <div>
                 <div className="font-bold text-slate-100 flex items-center gap-1.5">
-                  {assignedRosterPlayer && (
-                    <span className="text-amber-300 font-extrabold">{assignedRosterPlayer.name}</span>
-                  )}
-                  <span>({selPlayer.label})</span>
-                  <span className="text-slate-400 text-[11px] font-normal">
-                    {selPlayer.positionName}
+                  <span className="text-amber-300 font-extrabold">
+                    {assignedRosterPlayer && !SAMPLE_ATHLETE_NAMES.includes(assignedRosterPlayer.name)
+                      ? assignedRosterPlayer.name
+                      : (selPlayer.positionName || selPlayer.label)}
                   </span>
+                  <span>({selPlayer.label})</span>
+                  {assignedRosterPlayer && !SAMPLE_ATHLETE_NAMES.includes(assignedRosterPlayer.name) && (
+                    <span className="text-slate-400 text-[11px] font-normal">
+                      {selPlayer.positionName}
+                    </span>
+                  )}
                 </div>
                 <div className="text-sky-400 font-medium font-mono text-[11px]">
                   Route: {selPlayer.route.name}

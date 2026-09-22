@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Play, PlayerAssignment, RosterPlayer, TimestampedCoachingCue, DefenseScheme } from '../types';
-import { getPlayerAssignedToSlot } from '../data/rosterData';
+import { getPlayerAssignedToSlot, SAMPLE_ATHLETE_NAMES, getDefaultPositionNameForSlot } from '../data/rosterData';
 import { getDrillsForPlay } from '../data/drillDatabase';
 import { detectConceptsForPlay } from '../data/routeConceptsData';
 import { getPlayAssignedCoverage, getDefenseSchemeById } from '../utils/defensiveScoutStorage';
@@ -429,7 +429,7 @@ export const TacticalDetailPanel: React.FC<TacticalDetailPanelProps> = ({
             <thead>
               <tr className="border-b border-slate-200 text-[11px] font-mono text-slate-500">
                 <th className="py-2 px-2.5">Slot</th>
-                <th className="py-2 px-2.5">Jersey / Athlete</th>
+                <th className="py-2 px-2.5">Position / Assignment</th>
                 <th className="py-2 px-2.5">Route / Action</th>
                 <th className="py-2 px-2.5">Role Details</th>
               </tr>
@@ -438,6 +438,26 @@ export const TacticalDetailPanel: React.FC<TacticalDetailPanelProps> = ({
               {(Object.entries(play.players) as [string, PlayerAssignment][]).map(([key, player]) => {
                 const isSelected = selectedPlayerId === key;
                 const assignedRosterPlayer = getPlayerAssignedToSlot(key, roster);
+
+                const getPositionTitle = () => {
+                  const normKey = key.toUpperCase();
+                  if (normKey === 'QB') return 'Quarterback';
+                  if (normKey === 'C') return 'Center';
+                  if (normKey === 'LG') return 'Left Guard';
+                  if (normKey === 'RG') return 'Right Guard';
+                  if (normKey === 'X') return 'Wide Receiver (X)';
+                  if (normKey === 'Z') return 'Wide Receiver (Z)';
+                  if (normKey === 'Y') return 'Slot Receiver (Y)';
+                  if (normKey === 'H') return 'Slot Receiver (H)';
+                  if (normKey === 'W') return 'Wide Receiver (W)';
+                  if (normKey === 'RB' || normKey === 'HB') return 'Running Back';
+                  if (player?.positionName && player.positionName !== 'Player') return player.positionName;
+                  return getDefaultPositionNameForSlot(key, player.label || key);
+                };
+
+                const posTitle = getPositionTitle();
+                const isSampleName = assignedRosterPlayer && SAMPLE_ATHLETE_NAMES.includes(assignedRosterPlayer.name);
+                const displayName = assignedRosterPlayer && !isSampleName ? assignedRosterPlayer.name : posTitle;
 
                 return (
                   <tr
@@ -459,14 +479,14 @@ export const TacticalDetailPanel: React.FC<TacticalDetailPanelProps> = ({
                         {assignedRosterPlayer ? (
                           <>
                             <span
-                              className="w-5 h-5 rounded-md font-mono text-[11px] font-black text-white flex items-center justify-center shadow-2xs"
+                              className="w-5 h-5 rounded-md font-mono text-[11px] font-black text-white flex items-center justify-center shadow-2xs shrink-0"
                               style={{ backgroundColor: assignedRosterPlayer.avatarColor || '#3b82f6' }}
                             >
                               #{assignedRosterPlayer.jerseyNumber}
                             </span>
                             <div>
                               <div className="text-slate-900 font-bold text-xs leading-none">
-                                {assignedRosterPlayer.name}
+                                {displayName}
                               </div>
                               <div className="text-[10px] text-slate-400 font-mono mt-0.5">
                                 {player.label}
@@ -474,7 +494,19 @@ export const TacticalDetailPanel: React.FC<TacticalDetailPanelProps> = ({
                             </div>
                           </>
                         ) : (
-                          <span className="text-slate-900 font-medium">{player.label}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="w-5 h-5 rounded-md font-mono text-[10px] font-bold text-slate-600 bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                              {key}
+                            </span>
+                            <div>
+                              <div className="text-slate-900 font-bold text-xs leading-none">
+                                {posTitle}
+                              </div>
+                              <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                {player.label}
+                              </div>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </td>

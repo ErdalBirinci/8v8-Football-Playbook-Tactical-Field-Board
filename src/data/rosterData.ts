@@ -32,107 +32,154 @@ export const OFFENSIVE_SLOTS: { id: string; name: string; shortDesc: string; rec
   { id: 'RB', name: 'Running Back / HB', shortDesc: 'Ball Carrier, Blitz Pickup & Checkdown', recommendedPos: ['RB', 'ATH'] },
 ];
 
+export const SAMPLE_ATHLETE_NAMES = [
+  'Patrick Mahomes',
+  'Jason Kelce',
+  'Quenton Nelson',
+  'Zack Martin',
+  'Justin Jefferson',
+  'Tyreek Hill',
+  'Travis Kelce',
+  'Christian McCaffrey',
+  "Ja'Marr Chase",
+  'CeeDee Lamb',
+  'Trent Williams',
+  'Derrick Henry',
+  'Lamar Jackson',
+  'A.J. Brown',
+  'Amon-Ra St. Brown',
+  'Creed Humphrey',
+  'Cam Ward',
+  'Tyler Booker',
+  'Travis Hunter',
+  'Tetairoa McMillan',
+  'Luther Burden III',
+  'Ryan Williams',
+  'Colston Loveland',
+  'Ashton Jeanty',
+  'Mason Davis',
+  'Leo Chen',
+  'Alex Johnson',
+  'Jordan Brooks',
+  'Sammy Miller',
+  'Noah Clark',
+  'Ethan Wright',
+  'Carter Hayes',
+];
+
 export const DEFAULT_ROSTER: RosterPlayer[] = [
   {
-    id: 'p-qb-15',
-    name: 'Patrick Mahomes',
-    jerseyNumber: '15',
+    id: 'p-qb-12',
+    name: 'Quarterback',
+    jerseyNumber: '12',
     primaryPosition: 'QB',
     assignedSlot: 'QB',
     status: 'starter',
     speedRating: 88,
     handsRating: 95,
-    notes: 'Elite field vision, sidearm releases, deep ball precision behind the 3 O-Line pocket.',
+    notes: 'Field general, dropback timing, and progression reads behind 3 O-Line.',
     avatarColor: '#dc2626',
   },
   {
-    id: 'p-c-52',
-    name: 'Jason Kelce',
-    jerseyNumber: '52',
+    id: 'p-c-50',
+    name: 'Center',
+    jerseyNumber: '50',
     primaryPosition: 'C',
     assignedSlot: 'C',
     status: 'starter',
     speedRating: 84,
     handsRating: 88,
-    notes: '3 O-Line Anchor. Fast shotgun snap release, interior A-gap pass protection.',
+    notes: '3 O-Line Anchor. Shotgun snap accuracy and interior A-gap pass protection.',
     avatarColor: '#334155',
   },
   {
-    id: 'p-lg-56',
-    name: 'Quenton Nelson',
-    jerseyNumber: '56',
+    id: 'p-lg-64',
+    name: 'Left Guard',
+    jerseyNumber: '64',
     primaryPosition: 'OL',
     assignedSlot: 'LG',
     status: 'starter',
     speedRating: 82,
     handsRating: 80,
-    notes: '3 O-Line Left Guard. Dominant pass protection anchor and pulling road-grader on power runs.',
+    notes: '3 O-Line Left Guard. Pass protection anchor on left B-gap rushers.',
     avatarColor: '#475569',
   },
   {
-    id: 'p-rg-70',
-    name: 'Zack Martin',
-    jerseyNumber: '70',
+    id: 'p-rg-65',
+    name: 'Right Guard',
+    jerseyNumber: '65',
     primaryPosition: 'OL',
     assignedSlot: 'RG',
     status: 'starter',
     speedRating: 81,
     handsRating: 82,
-    notes: '3 O-Line Right Guard. Wall in pass pro pocket, textbook reach and down blocks.',
+    notes: '3 O-Line Right Guard. Pass protection anchor on right B-gap rushers.',
     avatarColor: '#475569',
   },
   {
-    id: 'p-x-18',
-    name: 'Justin Jefferson',
-    jerseyNumber: '18',
+    id: 'p-x-11',
+    name: 'Wide Receiver (X)',
+    jerseyNumber: '11',
     primaryPosition: 'WR',
     assignedSlot: 'X',
     status: 'starter',
     speedRating: 95,
     handsRating: 98,
-    notes: 'Boundary technician. Master of the 7-corner and 8-post double move.',
+    notes: 'Boundary split end. Isolated 1-on-1 matchups and boundary routes.',
     avatarColor: '#7c3aed',
   },
   {
-    id: 'p-z-10',
-    name: 'Tyreek Hill',
-    jerseyNumber: '10',
+    id: 'p-z-17',
+    name: 'Wide Receiver (Z)',
+    jerseyNumber: '17',
     primaryPosition: 'WR',
     assignedSlot: 'Z',
     status: 'starter',
     speedRating: 99,
     handsRating: 93,
-    notes: 'Speed burner. Highest win rate on 9-go streaks and jet sweep motions.',
+    notes: 'Field flanker. Deep vertical routes, speed outs, and motion receiver.',
     avatarColor: '#0284c7',
   },
   {
-    id: 'p-y-87',
-    name: 'Travis Kelce',
-    jerseyNumber: '87',
+    id: 'p-y-80',
+    name: 'Slot Receiver (Y)',
+    jerseyNumber: '80',
     primaryPosition: 'TE',
     assignedSlot: 'Y',
     status: 'starter',
     speedRating: 89,
     handsRating: 98,
-    notes: 'Seam splitter and intermediate mismatch over linebackers and safeties.',
+    notes: 'Inside slot / tight end hybrid. Seam routes, corner routes, and intermediate crossers.',
     avatarColor: '#ea580c',
   },
   {
-    id: 'p-rb-23',
-    name: 'Christian McCaffrey',
-    jerseyNumber: '23',
+    id: 'p-h-84',
+    name: 'Slot Receiver (H)',
+    jerseyNumber: '84',
+    primaryPosition: 'SLOT',
+    assignedSlot: 'H',
+    status: 'starter',
+    speedRating: 93,
+    handsRating: 94,
+    notes: 'Second inside slot receiver. Quick underneath options, drags, and mesh crossing routes.',
+    avatarColor: '#059669',
+  },
+  {
+    id: 'p-rb-28',
+    name: 'Running Back',
+    jerseyNumber: '28',
     primaryPosition: 'RB',
     assignedSlot: 'RB',
     status: 'starter',
     speedRating: 95,
-    handsRating: 96,
-    notes: 'Dual-threat running back. Decisive cutback runner, blitz pickup, and checkdown threat.',
+    handsRating: 94,
+    notes: 'Dual-threat back. Ball carrier, blitz pickup, and checkdown outlet.',
     avatarColor: '#9333ea',
   },
   // High quality reserves
   {
-    id: 'p-h-1',
-    name: "Ja'Marr Chase",
+    id: 'p-slot-backup',
+    name: 'Backup Slot Receiver',
     jerseyNumber: '1',
     primaryPosition: 'SLOT',
     assignedSlot: null,
@@ -143,8 +190,8 @@ export const DEFAULT_ROSTER: RosterPlayer[] = [
     avatarColor: '#059669',
   },
   {
-    id: 'p-w-88',
-    name: 'CeeDee Lamb',
+    id: 'p-wr-backup-2',
+    name: 'Backup Wide Receiver',
     jerseyNumber: '88',
     primaryPosition: 'WR',
     assignedSlot: null,
@@ -155,8 +202,8 @@ export const DEFAULT_ROSTER: RosterPlayer[] = [
     avatarColor: '#f59e0b',
   },
   {
-    id: 'p-ol-71',
-    name: 'Trent Williams',
+    id: 'p-ol-backup',
+    name: 'Backup Offensive Lineman',
     jerseyNumber: '71',
     primaryPosition: 'OL',
     assignedSlot: null,
@@ -167,8 +214,8 @@ export const DEFAULT_ROSTER: RosterPlayer[] = [
     avatarColor: '#64748b',
   },
   {
-    id: 'p-rb-22',
-    name: 'Derrick Henry',
+    id: 'p-rb-backup',
+    name: 'Backup Running Back',
     jerseyNumber: '22',
     primaryPosition: 'RB',
     assignedSlot: null,
@@ -180,8 +227,8 @@ export const DEFAULT_ROSTER: RosterPlayer[] = [
   },
   // Reserves / Backups
   {
-    id: 'p-qb-8',
-    name: 'Lamar Jackson',
+    id: 'p-qb-backup',
+    name: 'Backup Quarterback',
     jerseyNumber: '8',
     primaryPosition: 'QB',
     assignedSlot: null,
@@ -192,44 +239,20 @@ export const DEFAULT_ROSTER: RosterPlayer[] = [
     avatarColor: '#1d4ed8',
   },
   {
-    id: 'p-wr-11',
-    name: 'A.J. Brown',
-    jerseyNumber: '11',
+    id: 'p-wr-backup-3',
+    name: 'Reserve Wide Receiver',
+    jerseyNumber: '14',
     primaryPosition: 'WR',
     assignedSlot: null,
     status: 'substitute',
     speedRating: 94,
     handsRating: 95,
-    notes: 'YAC monster on mesh drags and quick slants.',
+    notes: 'Intermediate route technician on mesh drags and quick slants.',
     avatarColor: '#0d9488',
   },
   {
-    id: 'p-wr-14',
-    name: 'Amon-Ra St. Brown',
-    jerseyNumber: '14',
-    primaryPosition: 'SLOT',
-    assignedSlot: null,
-    status: 'substitute',
-    speedRating: 92,
-    handsRating: 98,
-    notes: 'Consistent 3rd-down chains mover on 5-out and curl sits.',
-    avatarColor: '#0891b2',
-  },
-  {
-    id: 'p-rb-24',
-    name: 'Derrick Henry',
-    jerseyNumber: '24',
-    primaryPosition: 'RB',
-    assignedSlot: null,
-    status: 'substitute',
-    speedRating: 90,
-    handsRating: 85,
-    notes: 'Power runner for redzone sprint draws and flat releases.',
-    avatarColor: '#4f46e5',
-  },
-  {
-    id: 'p-c-77',
-    name: 'Creed Humphrey',
+    id: 'p-c-backup',
+    name: 'Backup Center',
     jerseyNumber: '77',
     primaryPosition: 'C',
     assignedSlot: null,
@@ -453,6 +476,27 @@ export const ROSTER_PRESETS: { name: string; description: string; roster: Roster
   },
 ];
 
+// Helper: get clean position name for slot or position
+export function getDefaultPositionNameForSlot(slot: string | null | undefined, primaryPosition: string): string {
+  if (slot === 'QB') return 'Quarterback';
+  if (slot === 'C') return 'Center';
+  if (slot === 'LG') return 'Left Guard';
+  if (slot === 'RG') return 'Right Guard';
+  if (slot === 'X') return 'Wide Receiver (X)';
+  if (slot === 'Z') return 'Wide Receiver (Z)';
+  if (slot === 'Y') return 'Slot Receiver (Y)';
+  if (slot === 'H') return 'Slot Receiver (H)';
+  if (slot === 'W') return 'Wide Receiver (W)';
+  if (slot === 'RB' || slot === 'HB') return 'Running Back';
+  if (primaryPosition === 'QB') return 'Quarterback';
+  if (primaryPosition === 'C') return 'Center';
+  if (primaryPosition === 'OL') return 'Offensive Lineman';
+  if (primaryPosition === 'WR') return 'Wide Receiver';
+  if (primaryPosition === 'SLOT' || primaryPosition === 'TE') return 'Slot Receiver';
+  if (primaryPosition === 'RB') return 'Running Back';
+  return 'Player';
+}
+
 // Helper: load roster from localStorage or fallback to default
 export function loadRosterFromStorage(): RosterPlayer[] {
   if (typeof window === 'undefined') return DEFAULT_ROSTER;
@@ -464,7 +508,22 @@ export function loadRosterFromStorage(): RosterPlayer[] {
         const hasLG = parsed.some((p: RosterPlayer) => p.assignedSlot === 'LG');
         const hasRG = parsed.some((p: RosterPlayer) => p.assignedSlot === 'RG');
         if (hasLG && hasRG) {
-          return parsed;
+          // If stored roster has sample celebrity names, replace them with position names
+          let sanitized = false;
+          const cleaned = parsed.map((p: RosterPlayer) => {
+            if (SAMPLE_ATHLETE_NAMES.includes(p.name)) {
+              sanitized = true;
+              return {
+                ...p,
+                name: getDefaultPositionNameForSlot(p.assignedSlot, p.primaryPosition),
+              };
+            }
+            return p;
+          });
+          if (sanitized) {
+            saveRosterToStorage(cleaned);
+          }
+          return cleaned;
         }
       }
     }
