@@ -1,7 +1,8 @@
 {
-  "name": "react-example",
+  "name": "aalto-predators-8v8-playbook",
+  "version": "1.0.0",
+  "description": "Official Aalto Predators 8v8 Football Playbook & Tactical Interactive Field Board for the Finland University League",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
